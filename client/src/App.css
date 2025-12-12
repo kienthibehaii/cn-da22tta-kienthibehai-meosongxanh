@@ -1,0 +1,111 @@
+/* client/src/App.css */
+
+/* --- ĐỊNH NGHĨA BẢNG MÀU CHUNG --- */
+:root {
+  --primary-color: #10b981;   /* Màu xanh lá chủ đạo */
+  --primary-dark: #047857;    /* Xanh đậm hơn khi hover hoặc làm nền tối */
+  --accent-color: #3b82f6;    /* Màu xanh dương nhấn (cho diễn đàn) */
+  --danger-color: #ef4444;    /* Màu đỏ cho cảnh báo/admin */
+  --text-dark: #1f2937;       /* Màu chữ chính */
+  --text-light: #6b7280;      /* Màu chữ phụ */
+  --bg-light: #f9fafb;        /* Màu nền sáng */
+  --white: #ffffff;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-light); color: var(--text-dark); }
+a { text-decoration: none; color: inherit; }
+
+/* --- HEADER & NAV --- */
+header { background: var(--white); padding: 0 30px; height: 70px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100; }
+.logo { font-size: 1.8rem; font-weight: 800; color: var(--primary-color); }
+nav { display: flex; gap: 20px; align-items: center; }
+nav a { font-weight: 600; color: var(--text-light); padding: 5px 10px; transition: color 0.2s; }
+nav a:hover, nav a.active { color: var(--primary-color); }
+nav a.admin-link { color: var(--danger-color); }
+.user-menu { display: flex; gap: 15px; align-items: center; }
+.btn-logout { padding: 8px 15px; background: #fee2e2; color: var(--danger-color); border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+.btn-register-nav { background: var(--primary-color); color: var(--white) !important; border-radius: 6px; }
+
+/* --- AUTH PAGES (Đăng nhập/Đăng ký) --- */
+.auth-page { display: flex; justify-content: center; align-items: center; min-height: 80vh; background: var(--bg-light); }
+.auth-box { background: var(--white); padding: 40px; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+.auth-box h2 { color: var(--primary-color); margin-bottom: 25px; }
+.auth-box input { display: block; width: 100%; margin: 15px 0; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem; transition: border-color 0.2s; }
+.auth-box input:focus { border-color: var(--primary-color); outline: none; }
+.auth-box button { width: 100%; padding: 12px; background: var(--primary-color); color: var(--white); border: none; border-radius: 8px; font-size: 1.1rem; font-weight: bold; cursor: pointer; transition: background 0.2s; margin-top: 10px; }
+.auth-box button:hover { background: var(--primary-dark); }
+.auth-box button.outline { background: transparent; border: 2px solid var(--primary-color); color: var(--primary-color); }
+.auth-box button.outline:hover { background: #ecfdf5; }
+/* Thông báo lỗi/thành công */
+.message-box { padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 0.9rem; }
+.message-box.error { background-color: #fee2e2; color: var(--danger-color); border: 1px solid #fca5a5; }
+.message-box.success { background-color: #dcfce7; color: var(--primary-dark); border: 1px solid #86efac; }
+
+
+/* --- HOME PAGE --- */
+.hero-section { display: flex; gap: 30px; padding: 50px; background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); color: var(--white); border-radius: 20px; margin: 30px 20px; align-items: center; box-shadow: 0 10px 20px -10px rgba(16, 185, 129, 0.5); }
+.weather-card { background: rgba(255,255,255,0.25); backdrop-filter: blur(10px); padding: 25px; border-radius: 16px; min-width: 220px; text-align: center; border: 1px solid rgba(255,255,255,0.3); }
+.temp-box .temp { font-size: 3.5rem; font-weight: 800; display: block; line-height: 1; }
+.temp-box .desc { font-size: 1.1rem; text-transform: capitalize; }
+.aqi-badge { margin: 15px 0; padding: 8px 15px; background: var(--white); color: var(--primary-dark); border-radius: 20px; font-weight: bold; display: inline-block; }
+.hero-text h1 { font-size: 2.5rem; margin-bottom: 10px; }
+
+/* --- POSTS & FORUM --- */
+main { max-width: 1000px; margin: 30px auto; padding: 0 20px; }
+.forum-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 2px solid #e5e7eb; padding-bottom: 15px; }
+.btn-create { background: var(--accent-color); color: var(--white); padding: 12px 24px; border-radius: 8px; font-weight: bold; transition: background 0.2s; }
+.btn-create:hover { background: #2563eb; }
+
+.news-grid, .forum-page .post-list { display: flex; flex-direction: column; gap: 20px; }
+.news-card, .post-card { background: var(--white); padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #f3f4f6; transition: transform 0.2s; }
+.news-card:hover, .post-card:hover { transform: translateY(-3px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+.tag { background: #dcfce7; color: var(--primary-dark); padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; text-transform: uppercase; }
+.post-image { width: 100%; max-height: 400px; object-fit: cover; border-radius: 8px; margin-top: 15px; }
+
+/* --- CREATE POST PAGE --- */
+.create-post-page { max-width: 700px; margin: 40px auto; background: var(--white); padding: 40px; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); }
+.create-post-page h2 { color: var(--primary-color); text-align: center; margin-bottom: 30px; }
+.create-post-page label { display: block; margin-top: 20px; margin-bottom: 8px; font-weight: 600; color: var(--text-dark); }
+.create-post-page input, .create-post-page select, .create-post-page textarea { width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem; }
+.create-post-page input[type="file"] { padding: 10px; background: #f9fafb; }
+.create-post-page button { width: 100%; margin-top: 30px; padding: 15px; background: var(--primary-color); color: var(--white); border: none; border-radius: 8px; font-size: 1.2rem; font-weight: bold; cursor: pointer; }
+
+/* --- ADMIN PAGE --- */
+.admin-page h1 { color: var(--danger-color); }
+.stats-cards .card { background: var(--white); padding: 25px; border-radius: 12px; text-align: center; border-left: 5px solid var(--primary-color); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+.stats-cards .card.warn { border-left-color: var(--danger-color); }
+.stats-cards .card h3 { font-size: 2.5rem; margin: 10px 0; color: var(--primary-color); }
+.stats-cards .card.warn h3 { color: var(--danger-color); }
+
+/* Thông báo lỗi/thành công */
+.message-box { padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 0.95rem; font-weight: 500; text-align: left; }
+.message-box.error { background-color: #fee2e2; color: #ef4444; border: 1px solid #fca5a5; }
+.message-box.success { background-color: #dcfce7; color: #166534; border: 1px solid #86efac; }
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Fix scroll ngang trên mobile (bộ lọc danh mục, topic) */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Typography đẹp cho bài viết chi tiết */
+.prose {
+  @apply max-w-none text-gray-700 leading-relaxed;
+}
+.prose h1, .prose h2, .prose h3 {
+  @apply font-bold text-gray-900 mt-6 mb-3;
+}
+.prose img {
+  @apply rounded-lg my-6 mx-auto;
+}
+.prose blockquote {
+  @apply border-l-4 border-primary-500 pl-4 italic text-gray-600;
+}
