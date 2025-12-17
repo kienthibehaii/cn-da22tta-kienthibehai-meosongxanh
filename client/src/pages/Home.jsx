@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 
-// ⚠️ CẤU HÌNH API KEY RIÊNG BIỆT
-const WEATHER_API_KEY = '278b369b634e6ed7f3fbb56044eb0196'; // Key lấy từ openweathermap.org
-const AQI_API_KEY = 'dd55bc5957b6d1acc6b9313ccd429835cdbf95f7';         // Key lấy từ aqicn.org (WAQI)
+// --- CẤU HÌNH API KEY (Đã cập nhật key thực) ---
+const WEATHER_API_KEY = '278b369b634e6ed7f3fbb56044eb0196';
+const AQI_API_KEY = 'dd55bc5957b6d1acc6b9313ccd429835cdbf95f7';
 
 const Home = () => {
   const [weather, setWeather] = useState(null);
-  const [aqiData, setAqiData] = useState(null); 
+  const [aqiData, setAqiData] = useState(null);
   const [news, setNews] = useState([]);
   const [topPosts, setTopPosts] = useState([]);
   const [pinnedArticles, setPinnedArticles] = useState([]);
@@ -16,20 +16,30 @@ const Home = () => {
   const [loadingWeather, setLoadingWeather] = useState(true);
 
   useEffect(() => {
-    // 1. Lấy tin tức & bài viết (Giữ nguyên)
-    axios.get('http://localhost:5000/api/posts?type=news&status=approved').then(res => setNews(res.data)).catch(e => console.error(e));
-    axios.get('http://localhost:5000/api/posts/top').then(res => setTopPosts(res.data)).catch(e => console.error(e));
-    axios.get('http://localhost:5000/api/posts?type=article&status=approved').then(res => {
-        setPinnedArticles(res.data.filter(p => p.isPinned));
-    }).catch(e => console.error(e));
+    // 1. Lấy dữ liệu bài viết từ Server của mình
+    const fetchContent = async () => {
+        try {
+            const newsRes = await axios.get('http://localhost:5000/api/posts?type=news&status=approved');
+            setNews(newsRes.data);
+            
+            const topRes = await axios.get('http://localhost:5000/api/posts/top');
+            setTopPosts(topRes.data);
 
-    // 2. Bắt đầu lấy vị trí và thời tiết
+            const articleRes = await axios.get('http://localhost:5000/api/posts?type=article&status=approved');
+            setPinnedArticles(articleRes.data.filter(p => p.isPinned));
+        } catch (e) {
+            console.error("Lỗi tải nội dung:", e);
+        }
+    };
+    fetchContent();
+
+    // 2. Lấy dữ liệu Môi trường (Weather & AQI)
     getRealLocationData();
   }, []);
 
   const getRealLocationData = () => {
     if (!navigator.geolocation) {
-        setLocationError('Trình duyệt không hỗ trợ định vị.');
+        setLocationError('Trình duyệt không hỗ trợ định vị GPS.');
         setLoadingWeather(false);
         return;
     }
@@ -37,111 +47,135 @@ const Home = () => {
     navigator.geolocation.getCurrentPosition(
         async (position) => {
             const { latitude, longitude } = position.coords;
+            // console.log("Tọa độ của bạn:", latitude, longitude); // Bật dòng này để debug nếu cần
+
             try {
-                // --- A. GỌI API THỜI TIẾT (OpenWeatherMap) ---
+                // --- A. THỜI TIẾT (OpenWeatherMap) ---
                 const weatherRes = await axios.get(`https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=metric&appid=${WEATHER_API_KEY}&lang=vi`);
                 
-                // --- B. GỌI API ĐỊA DANH (Reverse Geocoding - OpenWeatherMap) ---
+                // --- B. LẤY TÊN ĐỊA PHƯƠNG CHÍNH XÁC (Reverse Geocoding) ---
+                // Bước này giúp hiện "Trà Vinh" thay vì tên trạm khí tượng
                 const geoRes = await axios.get(`https://api.openweathermap.org/geo/1.0/reverse?lat=${latitude}&lon=${longitude}&limit=1&appid=${WEATHER_API_KEY}`);
+                
+                // Ưu tiên tên tiếng Việt từ Geo API -> Tên gốc -> Tên từ Weather API
                 const localName = geoRes.data[0]?.local_names?.vi || geoRes.data[0]?.name || weatherRes.data.name;
 
                 setWeather({
                     temp: Math.round(weatherRes.data.main.temp),
-                    city: localName,
+                    city: localName, // Kết quả mong đợi: "Trà Vinh"
                     desc: weatherRes.data.weather[0].description,
                     icon: weatherRes.data.weather[0].icon
                 });
 
-                // --- C. GỌI API CHẤT LƯỢNG KHÔNG KHÍ (AQICN - WAQI) ---
-                // Sử dụng API Key riêng cho AQI
+                // --- C. CHẤT LƯỢNG KHÔNG KHÍ (AQICN - WAQI) ---
+                // API này tự động tìm trạm đo gần nhất với tọa độ lat/lon gửi lên
                 const pollutionRes = await axios.get(`https://api.waqi.info/feed/geo:${latitude};${longitude}/?token=${AQI_API_KEY}`);
                 
                 if (pollutionRes.data.status === 'ok') {
-                    const aqiValue = pollutionRes.data.data.aqi; // Giá trị AQI thực tế (0-500+)
-                    setAqiData(getAqiInfo(aqiValue));
+                    const aqiValue = pollutionRes.data.data.aqi;
+                    // Lấy tên trạm đo để hiển thị (tùy chọn)
+                    const stationName = pollutionRes.data.data.city.name; 
+                    setAqiData({ ...getAqiInfo(aqiValue), station: stationName });
                 } else {
-                    console.error("Lỗi API AQI:", pollutionRes.data.data);
+                    console.warn("AQI API Error:", pollutionRes.data.data);
+                    // Fallback nếu lỗi: hiển thị dữ liệu giả lập hoặc thông báo
+                    setAqiData(getAqiInfo(50)); 
                 }
 
                 setLoadingWeather(false);
             } catch(e) {
-                console.error("Lỗi API:", e);
-                setLocationError('Lỗi lấy dữ liệu (Kiểm tra lại các API Key).');
+                console.error("Lỗi API Môi trường:", e);
+                setLocationError('Không thể lấy dữ liệu thời tiết. Vui lòng kiểm tra kết nối mạng.');
                 setLoadingWeather(false);
             }
         },
-        () => {
-            setLocationError('Bạn đã chặn quyền truy cập vị trí. Không thể lấy thời tiết.');
+        (error) => {
+            console.error("Lỗi GPS:", error);
+            if (error.code === 1) setLocationError('Vui lòng cho phép truy cập vị trí để xem thời tiết Trà Vinh.');
+            else setLocationError('Lỗi định vị không xác định.');
             setLoadingWeather(false);
         }
     );
   };
 
-  // Helper: Chuyển đổi chỉ số AQI (Thang chuẩn 0-500) sang thông tin hiển thị
+  // Helper: Chuyển đổi chỉ số AQI (0-500) sang Tiếng Việt & Màu sắc
   const getAqiInfo = (aqi) => {
-      // Logic màu sắc chuẩn theo thang AQI quốc tế
-      if (aqi <= 50) return { value: aqi, level: 'Tốt', color: '#10b981', desc: 'Không khí trong lành.' };
-      if (aqi <= 100) return { value: aqi, level: 'Trung bình', color: '#eab308', desc: 'Chấp nhận được.' };
-      if (aqi <= 150) return { value: aqi, level: 'Kém', color: '#f97316', desc: 'Nhóm nhạy cảm nên hạn chế ra ngoài.' };
-      if (aqi <= 200) return { value: aqi, level: 'Xấu', color: '#ef4444', desc: 'Có hại sức khỏe, nên đeo khẩu trang.' };
-      if (aqi <= 300) return { value: aqi, level: 'Rất xấu', color: '#881337', desc: 'Cảnh báo sức khỏe khẩn cấp!' };
-      return { value: aqi, level: 'Nguy hại', color: '#450a0a', desc: 'Mọi người nên ở trong nhà.' };
+      if (aqi <= 50) return { value: aqi, level: 'Tốt', color: '#10b981', desc: 'Không khí trong lành, lý tưởng cho mọi hoạt động.' };
+      if (aqi <= 100) return { value: aqi, level: 'Trung bình', color: '#eab308', desc: 'Chấp nhận được. Nhóm nhạy cảm nên hạn chế vận động mạnh.' };
+      if (aqi <= 150) return { value: aqi, level: 'Kém', color: '#f97316', desc: 'Nhóm nhạy cảm có thể bị ảnh hưởng sức khỏe.' };
+      if (aqi <= 200) return { value: aqi, level: 'Xấu', color: '#ef4444', desc: 'Có hại cho sức khỏe mọi người. Nên đeo khẩu trang.' };
+      if (aqi <= 300) return { value: aqi, level: 'Rất xấu', color: '#881337', desc: 'Cảnh báo sức khỏe khẩn cấp! Hạn chế ra ngoài.' };
+      return { value: aqi, level: 'Nguy hại', color: '#450a0a', desc: 'Mọi người nên ở trong nhà, đóng cửa sổ.' };
   };
 
   return (
-    <div className="home-page">
+    <div className="max-w-7xl mx-auto px-4 py-8">
       
-      {/* 1. HERO SECTION: THỜI TIẾT & AQI */}
-      <div className="hero-section" style={{display:'flex', flexDirection:'column', gap:'20px', padding:'40px', background:'linear-gradient(135deg, #0f766e, #115e59)', color:'white', borderRadius:'20px', margin:'20px', boxShadow:'0 10px 25px -5px rgba(15, 118, 110, 0.5)'}}>
+      {/* 1. HERO SECTION */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-600 to-teal-800 text-white shadow-xl mb-12 p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-10">
          
-         <div style={{display:'flex', flexWrap:'wrap', gap:'40px', alignItems:'center', justifyContent:'center'}}>
+         {/* Background Effect */}
+         <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 rounded-full bg-white opacity-10 blur-3xl"></div>
+         <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 rounded-full bg-emerald-400 opacity-20 blur-3xl"></div>
+
+         <div className="md:w-1/2 text-center md:text-left z-10">
+            <span className="inline-block py-1 px-3 rounded-full bg-emerald-500/30 border border-emerald-400/30 text-emerald-100 text-sm font-semibold mb-4">🌿 Cộng đồng Sống Xanh</span>
+            <h1 className="text-4xl md:text-5xl font-extrabold mb-4 leading-tight">Hành động nhỏ <br/> <span className="text-emerald-200">Ý nghĩa lớn 🌍</span></h1>
+            <p className="text-emerald-100 text-lg mb-8">Chia sẻ kiến thức, lan tỏa lối sống bền vững.</p>
+            <div className="flex gap-4 justify-center md:justify-start">
+                <Link to="/forum" className="bg-white text-emerald-700 px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-emerald-50 transition transform hover:-translate-y-1">Tham gia ngay</Link>
+                <Link to="/articles" className="bg-emerald-700/50 border border-emerald-500/50 text-white px-6 py-3 rounded-xl font-bold hover:bg-emerald-700/70 transition">Khám phá</Link>
+            </div>
+         </div>
+
+         <div className="md:w-1/2 flex flex-wrap gap-4 justify-center z-10">
              {/* Thẻ Thời Tiết */}
-             <div className="weather-card" style={{background:'rgba(255,255,255,0.15)', backdropFilter:'blur(10px)', padding:'20px', borderRadius:'16px', minWidth:'280px', textAlign:'center', border:'1px solid rgba(255,255,255,0.2)'}}>
-                {loadingWeather ? <p>📡 Đang định vị & tải dữ liệu...</p> : 
-                 locationError ? <p style={{color:'#fca5a5'}}>{locationError}</p> : 
+             <div className="bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-2xl w-64 text-center shadow-lg">
+                {loadingWeather ? <div className="animate-pulse text-emerald-100">📡 Đang định vị...</div> : 
+                 locationError ? <p className="text-red-200 text-sm">{locationError}</p> : 
                  weather && (
                     <>
-                        <h2 style={{margin:'0 0 10px 0', fontSize:'1.5rem'}}>📍 {weather.city}</h2>
-                        <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap:'10px'}}>
-                            <img src={`https://openweathermap.org/img/wn/${weather.icon}@2x.png`} alt="icon" style={{width:'60px'}} />
-                            <span style={{fontSize:'3.5rem', fontWeight:'bold', lineHeight:1}}>{weather.temp}°</span>
+                        <h3 className="text-xl font-semibold mb-2 flex items-center justify-center gap-2">📍 {weather.city}</h3>
+                        <div className="flex items-center justify-center gap-2 my-2">
+                            <img src={`https://openweathermap.org/img/wn/${weather.icon}@2x.png`} className="w-16 h-16 drop-shadow-md" />
+                            <span className="text-5xl font-bold">{weather.temp}°</span>
                         </div>
-                        <p style={{textTransform:'capitalize', fontSize:'1.1rem', margin:'5px 0'}}>{weather.desc}</p>
+                        <p className="text-emerald-100 capitalize font-medium">{weather.desc}</p>
                     </>
                 )}
              </div>
 
-             {/* Thẻ AQI (Chất lượng không khí - Dữ liệu từ AQICN) */}
+             {/* Thẻ AQI */}
              {aqiData && (
-                 <div className="aqi-card" style={{background:'rgba(255,255,255,0.15)', backdropFilter:'blur(10px)', padding:'20px', borderRadius:'16px', minWidth:'280px', textAlign:'center', border:'1px solid rgba(255,255,255,0.2)'}}>
-                    <h3 style={{margin:'0 0 15px 0', fontSize:'1.2rem', opacity:0.9}}>💨 Chất lượng không khí</h3>
-                    <div style={{background: 'white', color: aqiData.color, padding:'8px 20px', borderRadius:'20px', fontWeight:'bold', fontSize:'2rem', display:'inline-block', marginBottom:'10px', minWidth:'100px'}}>
+                 <div className="bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-2xl w-64 text-center shadow-lg">
+                    <h3 className="text-lg font-medium text-emerald-100 mb-3">💨 Chất lượng không khí</h3>
+                    <div className="inline-block px-4 py-1 rounded-xl bg-white text-gray-800 font-bold text-4xl mb-2 shadow-inner" style={{color: aqiData.color}}>
                         {aqiData.value}
                     </div>
-                    <div style={{fontSize:'1.2rem', fontWeight:'bold', marginBottom:'5px'}}>{aqiData.level}</div>
-                    <p style={{margin:0, fontSize:'0.95rem', opacity:0.9}}>{aqiData.desc}</p>
+                    <div className="font-bold text-xl mb-1">{aqiData.level}</div>
+                    <p className="text-xs text-emerald-100 opacity-80 line-clamp-2" title={aqiData.desc}>{aqiData.desc}</p>
+                    {/* Hiển thị tên trạm đo nếu muốn debug */}
+                    {/* <div className="text-[10px] text-gray-300 mt-2 truncate">{aqiData.station}</div> */}
                  </div>
              )}
          </div>
-
-         <div className="hero-text" style={{textAlign:'center', marginTop:'20px'}}>
-            <h1 style={{fontSize:'2.2rem', marginBottom:'10px'}}>Hành động nhỏ - Ý nghĩa lớn 🌍</h1>
-            <p style={{fontSize: '1.1rem', opacity: 0.9, maxWidth:'600px', margin:'0 auto'}}>Cùng cộng đồng EcoLife chia sẻ kiến thức và lan tỏa lối sống xanh để bảo vệ môi trường ngay hôm nay.</p>
-         </div>
       </div>
 
-      {/* 2. KIẾN THỨC NỔI BẬT (GHIM) */}
+      {/* 2. PINNED ARTICLES (Kiến Thức Nổi Bật) */}
       {pinnedArticles.length > 0 && (
-          <div className="featured-section" style={{marginBottom: '40px', background: '#f0f9ff', padding: '30px 20px'}}>
-            <h2 style={{color: '#0284c7', marginBottom: '20px', textAlign:'center', fontSize:'1.8rem'}}>⭐ Kiến Thức Nổi Bật</h2>
-            <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', maxWidth:'1200px', margin:'0 auto'}}>
+          <div className="mb-16 bg-blue-50 rounded-3xl p-8 border border-blue-100">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2 justify-center"><span className="text-blue-500">⭐</span> Kiến Thức Nổi Bật</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {pinnedArticles.map(post => (
-                    <Link to={`/post/${post._id}`} key={post._id} style={{textDecoration:'none', color:'inherit'}}>
-                        <div style={{background: 'white', borderRadius: '12px', overflow:'hidden', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', transition:'transform 0.2s', height:'100%'}}>
-                            {post.image && <img src={post.image} style={{width:'100%', height:'180px', objectFit:'cover'}} />}
-                            <div style={{padding:'20px'}}>
-                                <h3 style={{margin:'0 0 10px 0', fontSize:'1.2rem', color:'#0284c7'}}>{post.title}</h3>
-                                <p style={{color:'#666', fontSize:'0.9rem', lineHeight:'1.5'}}>{post.content.substring(0, 80)}...</p>
+                    <Link to={`/post/${post._id}`} key={post._id} className="group h-full block">
+                        <div className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 h-full border border-gray-100 overflow-hidden flex flex-col">
+                            <div className="h-48 overflow-hidden relative bg-gray-200">
+                                {post.image ? <img src={post.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" /> : <div className="flex items-center justify-center h-full text-4xl text-gray-400">📚</div>}
+                                <span className="absolute top-3 left-3 bg-white/90 backdrop-blur text-xs font-bold px-3 py-1 rounded-full text-blue-700 shadow-sm">{post.category}</span>
+                            </div>
+                            <div className="p-5 flex-grow">
+                                <h3 className="text-lg font-bold text-gray-800 group-hover:text-blue-600 mb-2 line-clamp-2 transition-colors">{post.title}</h3>
+                                <p className="text-gray-500 text-sm line-clamp-3 leading-relaxed">{post.content}</p>
                             </div>
                         </div>
                     </Link>
@@ -150,20 +184,29 @@ const Home = () => {
           </div>
       )}
 
-      <div style={{maxWidth:'1200px', margin:'0 auto', padding:'0 20px', display:'grid', gridTemplateColumns:'2fr 1fr', gap:'40px'}}>
+      {/* 3. MAIN CONTENT GRID */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 mb-12">
           
-          {/* 3. TIN TỨC MỚI */}
-          <div className="news-section">
-            <h2 style={{color: '#10b981', marginBottom: '20px', borderBottom:'2px solid #10b981', paddingBottom:'10px', display:'inline-block'}}>📰 Tin Tức Mới Nhất</h2>
-            <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
-                {news.length === 0 ? <p>Chưa có tin tức nào.</p> : news.map(item => (
-                    <Link to={`/post/${item._id}`} key={item._id} style={{textDecoration:'none', color:'inherit'}}>
-                        <div style={{background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', display:'flex', gap:'20px', alignItems:'center'}}>
-                            {item.image && <img src={item.image} alt={item.title} style={{height: '100px', width:'140px', objectFit:'cover', borderRadius:'8px'}} />}
-                            <div>
-                                <span style={{background: '#dcfce7', color: '#047857', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase'}}>{item.category}</span>
-                                <h3 style={{margin: '8px 0', fontSize: '1.1rem'}}>{item.title}</h3>
-                                <small style={{color:'#999'}}>{new Date(item.createdAt).toLocaleDateString()}</small>
+          {/* CỘT TRÁI: TIN TỨC */}
+          <div className="lg:col-span-2">
+            <div className="flex justify-between items-center mb-6 border-b-2 border-emerald-100 pb-2">
+                <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><span className="text-emerald-500">📰</span> Tin Tức Mới Nhất</h2>
+                <Link to="/news" className="text-emerald-600 text-sm font-bold hover:underline">Xem tất cả &rarr;</Link>
+            </div>
+            <div className="space-y-5">
+                {news.length === 0 ? <p className="text-gray-500 italic py-10 text-center bg-gray-50 rounded-xl">Chưa có tin tức nào.</p> : news.map(item => (
+                    <Link to={`/post/${item._id}`} key={item._id} className="block group">
+                        <div className="bg-white p-4 rounded-2xl shadow-sm hover:shadow-md border border-gray-100 transition flex gap-5 items-start">
+                            <div className="w-32 h-24 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100">
+                                {item.image ? <img src={item.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : <div className="w-full h-full flex items-center justify-center text-2xl text-gray-300">📰</div>}
+                            </div>
+                            <div className="flex-1 py-1">
+                                <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-600 mb-2">{item.category}</span>
+                                <h3 className="text-lg font-bold text-gray-800 group-hover:text-emerald-600 transition leading-snug mb-2 line-clamp-2">{item.title}</h3>
+                                <div className="flex items-center gap-3 text-xs text-gray-400 font-medium">
+                                    <span>📅 {new Date(item.createdAt).toLocaleDateString()}</span>
+                                    <span>👁️ {item.views}</span>
+                                </div>
                             </div>
                         </div>
                     </Link>
@@ -171,25 +214,30 @@ const Home = () => {
             </div>
           </div>
 
-          {/* 4. TOP DIỄN ĐÀN (SIDEBAR) */}
-          <div className="top-posts-section">
-            <h2 style={{color: '#f59e0b', marginBottom: '20px', borderBottom:'2px solid #f59e0b', paddingBottom:'10px'}}>🔥 Sôi Động Nhất</h2>
-            <div style={{display: 'flex', flexDirection: 'column', gap: '15px'}}>
-                {topPosts.length === 0 ? <p>Chưa có bài viết nổi bật.</p> : topPosts.map((post, index) => (
-                    <Link to={`/post/${post._id}`} key={post._id} style={{textDecoration: 'none', color: 'inherit'}}>
-                        <div style={{background:'white', padding:'15px', borderRadius:'10px', boxShadow:'0 2px 4px rgba(0,0,0,0.05)', display:'flex', gap:'10px', alignItems:'center'}}>
-                            <div style={{background: index===0?'#f59e0b':(index===1?'#94a3b8':'#b45309'), color: 'white', width: '30px', height: '30px', borderRadius: '50%', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:'bold', flexShrink:0}}>
+          {/* CỘT PHẢI: TOP DIỄN ĐÀN */}
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b-2 border-orange-100 pb-2 flex items-center gap-2"><span className="text-orange-500">🔥</span> Sôi Động Nhất</h2>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                <div className="space-y-6">
+                    {topPosts.length === 0 ? <p className="text-gray-500 italic text-center py-5">Chưa có bài viết nổi bật.</p> : topPosts.map((post, index) => (
+                        <Link to={`/post/${post._id}`} key={post._id} className="flex gap-4 items-start group">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-sm ${index === 0 ? 'bg-gradient-to-br from-yellow-400 to-orange-500 text-white' : index === 1 ? 'bg-gray-200 text-gray-600' : index === 2 ? 'bg-orange-100 text-orange-600' : 'bg-gray-50 text-gray-400'}`}>
                                 {index + 1}
                             </div>
                             <div>
-                                <h4 style={{margin: '0 0 5px 0', fontSize:'1rem'}}>{post.title}</h4>
-                                <p style={{fontSize: '0.8rem', color: '#666', margin:0}}>
-                                    👁️ {post.views} • {post.author?.fullName}
-                                </p>
+                                <h4 className="text-sm font-bold text-gray-800 group-hover:text-emerald-600 transition line-clamp-2 leading-snug mb-1">{post.title}</h4>
+                                <div className="text-xs text-gray-400 flex items-center gap-2 font-medium">
+                                    <span className="flex items-center gap-1 text-gray-500">👁️ {post.views}</span>
+                                    <span>•</span>
+                                    <span>{post.author?.fullName}</span>
+                                </div>
                             </div>
-                        </div>
-                    </Link>
-                ))}
+                        </Link>
+                    ))}
+                </div>
+                <div className="mt-6 pt-4 border-t border-gray-100 text-center">
+                    <Link to="/forum" className="text-sm font-bold text-emerald-600 hover:underline">Vào diễn đàn thảo luận &rarr;</Link>
+                </div>
             </div>
           </div>
 

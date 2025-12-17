@@ -1,22 +1,16 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 
 const Admin = () => {
-  const location = useLocation();
-  // Nếu quay lại từ trang chi tiết, giữ nguyên tab cũ, mặc định là dashboard
-  const [activeTab, setActiveTab] = useState(location.state?.tab || 'dashboard');
-  
-  // State Dashboard Filter
-  const [dashFilter, setDashFilter] = useState('all'); // all, forum, news, article
-
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
-  const [postsList, setPostsList] = useState([]); 
+  const [postsList, setPostsList] = useState([]);
   const [topics, setTopics] = useState([]);
-  const [reportedPosts, setReportedPosts] = useState([]);
   const [categories, setCategories] = useState([]); 
+  const [reportedPosts, setReportedPosts] = useState([]);
   
   const [newTopicName, setNewTopicName] = useState('');
   const [newCatName, setNewCatName] = useState('');
@@ -29,8 +23,8 @@ const Admin = () => {
     if (activeTab === 'dashboard') fetchStats();
     if (activeTab === 'users') fetchUsers();
     if (activeTab === 'topics') fetchTopics();
-    if (activeTab === 'reports') fetchReports();
     if (activeTab === 'categories') fetchCategories();
+    if (activeTab === 'reports') fetchReports();
     
     if (['forum_posts', 'news', 'articles'].includes(activeTab)) {
         const typeMap = { 'forum_posts': 'forum', 'news': 'news', 'articles': 'article' };
@@ -38,175 +32,137 @@ const Admin = () => {
     }
   }, [activeTab]);
 
-  // --- API CALLS ---
-  const fetchStats = async () => axios.get('http://localhost:5000/api/admin/stats', config).then(res => setStats(res.data));
-  const fetchUsers = async () => axios.get('http://localhost:5000/api/admin/users', config).then(res => setUsers(res.data));
-  const fetchTopics = async () => axios.get('http://localhost:5000/api/admin/topics', config).then(res => setTopics(res.data));
-  const fetchReports = async () => axios.get('http://localhost:5000/api/admin/reports', config).then(res => setReportedPosts(res.data));
-  const fetchCategories = async () => axios.get('http://localhost:5000/api/categories').then(res => setCategories(res.data));
-  
-  const fetchPostsByType = async (type) => {
-      const res = await axios.get(`http://localhost:5000/api/admin/posts-by-type?type=${type}`, config);
-      setPostsList(res.data);
-  };
+  // API Calls
+  const fetchStats = async () => axios.get('http://localhost:5000/api/admin/stats', config).then(res => setStats(res.data)).catch(console.error);
+  const fetchUsers = async () => axios.get('http://localhost:5000/api/admin/users', config).then(res => setUsers(res.data)).catch(console.error);
+  const fetchTopics = async () => axios.get('http://localhost:5000/api/admin/topics', config).then(res => setTopics(res.data)).catch(console.error);
+  const fetchCategories = async () => axios.get('http://localhost:5000/api/categories').then(res => setCategories(res.data)).catch(console.error);
+  const fetchReports = async () => axios.get('http://localhost:5000/api/admin/reports', config).then(res => setReportedPosts(res.data)).catch(console.error);
+  const fetchPostsByType = async (type) => { const res = await axios.get(`http://localhost:5000/api/admin/posts-by-type?type=${type}`, config); setPostsList(res.data); };
 
-  // --- ACTIONS ---
-  const handleBanUser = async (id) => { if(!confirm("Đổi trạng thái khóa?")) return; await axios.put(`http://localhost:5000/api/admin/users/${id}/ban`, {}, config); fetchUsers(); };
+  // Handlers
+  const handleBanUser = async (id) => { if(!confirm("Đổi trạng thái?")) return; await axios.put(`http://localhost:5000/api/admin/users/${id}/ban`, {}, config); fetchUsers(); };
   const handleChangeRole = async (id, newRole) => { if(!confirm(`Cấp quyền ${newRole}?`)) return; await axios.put(`http://localhost:5000/api/admin/users/${id}/role`, { role: newRole }, config); fetchUsers(); };
-  const handleAddTopic = async () => { if(!newTopicName) return; try { await axios.post('http://localhost:5000/api/admin/topics', { name: newTopicName }, config); setNewTopicName(''); fetchTopics(); } catch(e) { alert("Lỗi"); } };
-  const handleDeleteTopic = async (id) => { if(confirm("Xóa topic?")) { await axios.delete(`http://localhost:5000/api/admin/topics/${id}`, config); fetchTopics(); } };
-  const handleAddCategory = async () => { if(!newCatName) return; try { await axios.post('http://localhost:5000/api/categories', { name: newCatName }, config); setNewCatName(''); fetchCategories(); } catch(e) { alert("Lỗi"); } };
-  const handleDeleteCategory = async (id) => { if(confirm("Xóa danh mục?")) { await axios.delete(`http://localhost:5000/api/categories/${id}`, config); fetchCategories(); } };
+  const handleAddTopic = async () => { if(!newTopicName) return; await axios.post('http://localhost:5000/api/admin/topics', { name: newTopicName }, config); setNewTopicName(''); fetchTopics(); };
+  const handleDeleteTopic = async (id) => { if(confirm("Xóa?")) { await axios.delete(`http://localhost:5000/api/admin/topics/${id}`, config); fetchTopics(); } };
+  const handleAddCategory = async () => { if(!newCatName) return; await axios.post('http://localhost:5000/api/categories', { name: newCatName }, config); setNewCatName(''); fetchCategories(); };
+  const handleDeleteCategory = async (id) => { if(confirm("Xóa?")) { await axios.delete(`http://localhost:5000/api/categories/${id}`, config); fetchCategories(); } };
   const handleSafePost = async (id) => { if(confirm("Gỡ báo cáo?")) { await axios.put(`http://localhost:5000/api/admin/reports/${id}/dismiss`, {}, config); fetchReports(); } };
   const handleDeletePost = async (id, isReportTab = false) => { if(confirm("Xóa bài?")) { await axios.delete(`http://localhost:5000/api/posts/${id}`, config); if(isReportTab) fetchReports(); else { const typeMap = {'forum_posts':'forum','news':'news','articles':'article'}; fetchPostsByType(typeMap[activeTab]); } } };
 
-  // Helper cho Tab
-  const TabButton = ({ id, label }) => (
-      <button onClick={() => setActiveTab(id)} style={{padding: '10px 15px', border: 'none', background: activeTab === id ? '#dc2626' : 'white', color: activeTab === id ? 'white' : '#333', cursor: 'pointer', borderRadius: '5px', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.1)'}}>{label}</button>
+  // UI Components
+  const TabBtn = ({ id, label }) => (
+      <button onClick={() => setActiveTab(id)} className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${activeTab === id ? 'bg-red-600 text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>{label}</button>
   );
 
   return (
-    <div className="admin-page" style={{maxWidth: '1300px', margin: '20px auto', padding: '0 20px'}}>
-      <h1 style={{color: '#dc2626'}}>🛡️ Quản Trị Hệ Thống</h1>
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-2"><span className="text-red-600">🛡️</span> Hệ Thống Quản Trị</h1>
+          <div className="text-sm bg-white px-4 py-2 rounded-full border border-gray-200">Hi, <b>{currentUser?.username}</b></div>
+      </div>
       
-      <div style={{display:'flex', gap:'10px', flexWrap:'wrap', marginBottom:'30px', background:'#f3f4f6', padding:'15px', borderRadius:'10px'}}>
-          <TabButton id="dashboard" label="📊 Tổng quan" />
-          <TabButton id="users" label="👥 Người dùng" />
-          <TabButton id="forum_posts" label="💬 Diễn Đàn" />
-          <TabButton id="news" label="📰 Tin Tức" />
-          <TabButton id="articles" label="📚 Kiến Thức" />
-          <TabButton id="categories" label="📂 Danh mục News" /> 
-          <TabButton id="topics" label="🏷️ Chủ đề Forum" />
-          <TabButton id="reports" label="🚩 Báo cáo" />
+      <div className="flex flex-wrap gap-2 mb-8 bg-gray-100 p-2 rounded-xl">
+          <TabBtn id="dashboard" label="📊 Tổng quan" />
+          <TabBtn id="users" label="👥 Người dùng" />
+          <TabBtn id="forum_posts" label="💬 Diễn đàn" />
+          <TabBtn id="news" label="📰 Tin tức" />
+          <TabBtn id="articles" label="📚 Kiến thức" />
+          <TabBtn id="topics" label="🏷️ Topic Forum" />
+          <TabBtn id="categories" label="📂 Danh mục News" /> 
+          <TabBtn id="reports" label="🚩 Báo cáo" />
       </div>
 
-      <div style={{background:'white', padding:'20px', borderRadius:'10px', boxShadow:'0 4px 10px rgba(0,0,0,0.05)'}}>
-        
-        {/* 1. DASHBOARD NÂNG CẤP */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 min-h-[500px]">
+        {/* 1. DASHBOARD */}
         {activeTab === 'dashboard' && stats && (
             <div>
-                {/* Bộ lọc Dashboard */}
-                <div style={{marginBottom:'20px', textAlign:'right'}}>
-                    <span style={{marginRight:'10px', fontWeight:'bold'}}>Xem thống kê: </span>
-                    <select value={dashFilter} onChange={(e)=>setDashFilter(e.target.value)} style={{padding:'5px'}}>
-                        <option value="all">Toàn bộ hệ thống</option>
-                        <option value="forum">Chỉ Diễn đàn</option>
-                        <option value="news">Chỉ Tin tức</option>
-                        <option value="article">Chỉ Kiến thức</option>
-                    </select>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div className="bg-blue-50 p-6 rounded-xl border border-blue-100 text-center"><h3 className="text-4xl font-bold text-blue-600 mb-1">{stats.totalUsers}</h3><span className="text-blue-600/70 font-medium">Thành viên</span></div>
+                    <div className="bg-emerald-50 p-6 rounded-xl border border-emerald-100 text-center"><h3 className="text-4xl font-bold text-emerald-600 mb-1">{stats.totalPosts}</h3><span className="text-emerald-600/70 font-medium">Bài viết</span></div>
+                    <div className="bg-orange-50 p-6 rounded-xl border border-orange-100 text-center"><h3 className="text-4xl font-bold text-orange-600 mb-1">{stats.totalViews}</h3><span className="text-orange-600/70 font-medium">Lượt xem</span></div>
                 </div>
-
-                <div style={{display:'flex', gap:'20px', marginBottom:'30px'}}>
-                    <div style={{flex:1, padding:'20px', background:'#e0f2fe', borderRadius:'10px', textAlign:'center'}}><h2>{stats.totalUsers}</h2> User</div>
-                    <div style={{flex:1, padding:'20px', background:'#dcfce7', borderRadius:'10px', textAlign:'center'}}>
-                        {/* Logic hiển thị giả lập dựa trên filter (để chính xác cần API backend lọc, nhưng ở đây demo UI) */}
-                        <h2>{dashFilter === 'all' ? stats.totalPosts : '...'}</h2> Bài viết
-                    </div>
-                    <div style={{flex:1, padding:'20px', background:'#fee2e2', borderRadius:'10px', textAlign:'center'}}><h2>{stats.totalViews}</h2> Lượt xem</div>
-                </div>
-                <div style={{height:'350px'}}>
-                    <h4 style={{textAlign:'center'}}>Bài viết theo danh mục</h4>
-                    <ResponsiveContainer width="100%" height="100%">
+                <div className="h-80 bg-gray-50 rounded-xl p-4 border border-gray-100">
+                    <h4 className="text-center font-bold text-gray-500 mb-4">Thống kê bài viết theo danh mục</h4>
+                    <ResponsiveContainer width="100%" height="90%">
                         <BarChart data={stats.chartData}>
-                            <XAxis dataKey="_id" /> <YAxis /> <Tooltip /> <Legend />
-                            <Bar dataKey="count" name="Số lượng bài" fill="#8884d8">
-                                {stats.chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={['#0088FE', '#00C49F', '#FFBB28', '#FF8042'][index % 4]} />)}
-                            </Bar>
+                            <XAxis dataKey="_id" /> <YAxis /> <Tooltip /> <Bar dataKey="count" name="Số bài" fill="#8884d8" radius={[4, 4, 0, 0]}>{stats.chartData.map((e, i) => <Cell key={i} fill={['#3b82f6', '#10b981', '#f59e0b', '#ef4444'][i % 4]} />)}</Bar>
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
             </div>
         )}
 
-        {/* 2. QUẢN LÝ NGƯỜI DÙNG (Giữ nguyên) */}
-        {activeTab === 'users' && (
-            <table style={{width:'100%', borderCollapse:'collapse'}}>
-                <thead><tr style={{background:'#f9fafb', textAlign:'left'}}><th style={{padding:'10px'}}>User</th><th style={{padding:'10px'}}>Email</th><th style={{padding:'10px'}}>Vai trò</th><th style={{padding:'10px'}}>Hành động</th></tr></thead>
-                <tbody>
-                    {users.map(u => (
-                        <tr key={u._id} style={{borderBottom:'1px solid #eee', opacity: u.isBanned?0.5:1}}>
-                            <td style={{padding:'10px'}}><b>{u.fullName}</b><br/><small>@{u.username}</small></td>
-                            <td style={{padding:'10px'}}>{u.email}</td>
-                            <td style={{padding:'10px'}}>
-                                <select value={u.role} onChange={(e)=>handleChangeRole(u._id, e.target.value)} style={{padding:'5px'}}>
-                                    <option value="user">User</option><option value="editor">Editor</option><option value="admin">Admin</option><option value="super_admin">Super Admin</option>
-                                </select>
-                            </td>
-                            <td style={{padding:'10px'}}>
-                                {u._id !== currentUser?.id && <button onClick={()=>handleBanUser(u._id)} style={{background: u.isBanned?'green':'red', color:'white', border:'none', padding:'5px 10px', borderRadius:'5px'}}>{u.isBanned?'Mở':'Khóa'}</button>}
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        )}
-
-        {/* 3. QUẢN LÝ BÀI VIẾT - SỬA LINK XEM CHI TIẾT */}
-        {['forum_posts', 'news', 'articles'].includes(activeTab) && (
-            <table style={{width:'100%', borderCollapse:'collapse'}}>
-                <thead><tr style={{background:'#f9fafb', textAlign:'left'}}><th style={{padding:'10px'}}>Tiêu đề</th><th style={{padding:'10px'}}>Tác giả</th><th style={{padding:'10px'}}>Trạng thái</th><th style={{padding:'10px'}}>Hành động</th></tr></thead>
-                <tbody>
-                    {postsList.length === 0 ? <tr><td colSpan="4" style={{padding:'20px', textAlign:'center'}}>Trống</td></tr> : 
-                    postsList.map(p => (
-                        <tr key={p._id} style={{borderBottom:'1px solid #eee'}}>
-                            <td style={{padding:'10px'}}>{p.title}</td>
-                            <td style={{padding:'10px'}}>{p.author?.fullName}</td>
-                            <td style={{padding:'10px'}}><span style={{color: p.status==='approved'?'green':'orange'}}>{p.status==='approved'?'Đã đăng':'Chờ duyệt'}</span></td>
-                            <td style={{padding:'10px'}}>
-                                {/* --- TRUYỀN STATE ĐỂ NÚT BACK BIẾT ĐƯỜNG VỀ --- */}
-                                <Link to={`/post/${p._id}`} state={{ from: '/admin', tab: activeTab }} style={{marginRight:'10px', color:'blue', fontWeight:'bold'}}>Xem</Link>
-                                <Link to={`/edit-post/${p._id}`} style={{marginRight:'10px', color:'orange'}}>Sửa</Link>
-                                <button onClick={()=>handleDeletePost(p._id)} style={{color:'red', background:'none', border:'none', cursor:'pointer'}}>Xóa</button>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        )}
-
-        {/* CÁC TAB KHÁC GIỮ NGUYÊN CODE CŨ (Categories, Topics) */}
-        {activeTab === 'categories' && (
-            <div>
-                <h3>📂 Quản lý Danh mục Tin tức</h3>
-                <div style={{marginBottom:'20px', display:'flex', gap:'10px'}}>
-                    <input value={newCatName} onChange={e=>setNewCatName(e.target.value)} placeholder="Tên danh mục..." style={{padding:'10px', width:'300px', border:'1px solid #ddd'}} />
-                    <button onClick={handleAddCategory} style={{padding:'10px 20px', background:'#10b981', color:'white', border:'none', cursor:'pointer'}}>Thêm</button>
-                </div>
-                <ul>{categories.map(c => <li key={c._id} style={{padding:'5px 0'}}>{c.name} <button onClick={()=>handleDeleteCategory(c._id)} style={{color:'red', marginLeft:'10px', border:'none', background:'none', cursor:'pointer'}}>Xóa</button></li>)}</ul>
-            </div>
-        )}
-        
-        {activeTab === 'topics' && (
-            <div>
-                <h3>🏷️ Quản lý Topic Diễn đàn</h3>
-                <div style={{marginBottom:'20px', display:'flex', gap:'10px'}}>
-                    <input value={newTopicName} onChange={e=>setNewTopicName(e.target.value)} placeholder="Tên topic..." style={{padding:'10px', width:'300px', border:'1px solid #ddd'}} />
-                    <button onClick={handleAddTopic} style={{padding:'10px 20px', background:'#10b981', color:'white', border:'none', cursor:'pointer'}}>Thêm</button>
-                </div>
-                <div style={{display:'flex', gap:'10px'}}>{topics.map(t => <div key={t._id} style={{background:'#eee', padding:'5px 10px', borderRadius:'15px'}}>{t.name} <span onClick={()=>handleDeleteTopic(t._id)} style={{cursor:'pointer', color:'red', marginLeft:'5px'}}>x</span></div>)}</div>
+        {/* 2. TABLE TEMPLATE (Users, Posts, Reports) */}
+        {['users', 'forum_posts', 'news', 'articles', 'reports'].includes(activeTab) && (
+            <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                    <thead>
+                        <tr className="border-b border-gray-200 text-gray-500 text-sm uppercase"><th className="py-3 px-4">Thông tin chính</th><th className="py-3 px-4">Chi tiết</th><th className="py-3 px-4">Trạng thái</th><th className="py-3 px-4 text-right">Hành động</th></tr>
+                    </thead>
+                    <tbody className="text-sm text-gray-700">
+                        {activeTab === 'users' && users.map(u => (
+                            <tr key={u._id} className="border-b border-gray-100 hover:bg-gray-50">
+                                <td className="py-3 px-4 font-bold">{u.fullName}<br/><span className="font-normal text-gray-400">@{u.username}</span></td>
+                                <td className="py-3 px-4">{u.email}</td>
+                                <td className="py-3 px-4"><span className={`px-2 py-1 rounded text-xs font-bold ${u.isBanned?'bg-red-100 text-red-600':'bg-green-100 text-green-600'}`}>{u.isBanned?'Locked':'Active'}</span></td>
+                                <td className="py-3 px-4 text-right flex justify-end gap-2">
+                                    <select value={u.role} onChange={(e)=>handleChangeRole(u._id, e.target.value)} className="border rounded px-1 py-1 text-xs"><option value="user">User</option><option value="editor">Editor</option><option value="admin">Admin</option><option value="super_admin">Super</option></select>
+                                    {u._id !== currentUser?.id && <button onClick={()=>handleBanUser(u._id)} className="text-red-500 hover:bg-red-50 px-2 py-1 rounded border border-red-200">{u.isBanned?'Mở':'Khóa'}</button>}
+                                </td>
+                            </tr>
+                        ))}
+                        {['forum_posts', 'news', 'articles'].includes(activeTab) && postsList.map(p => (
+                            <tr key={p._id} className="border-b border-gray-100 hover:bg-gray-50">
+                                <td className="py-3 px-4 font-medium">{p.title}</td>
+                                <td className="py-3 px-4 text-gray-500">{p.author?.fullName}</td>
+                                <td className="py-3 px-4"><span className={`px-2 py-1 rounded text-xs font-bold ${p.status==='approved'?'bg-green-100 text-green-600':'bg-orange-100 text-orange-600'}`}>{p.status}</span></td>
+                                <td className="py-3 px-4 text-right">
+                                    <Link to={`/post/${p._id}`} state={{from:'/admin', tab: activeTab}} className="text-blue-600 font-bold mr-3 hover:underline">Xem</Link>
+                                    <Link to={`/edit-post/${p._id}`} className="text-orange-500 mr-3 hover:underline">Sửa</Link>
+                                    <button onClick={()=>handleDeletePost(p._id)} className="text-red-500 hover:underline">Xóa</button>
+                                </td>
+                            </tr>
+                        ))}
+                        {activeTab === 'reports' && reportedPosts.map(p => (
+                            <tr key={p._id} className="border-b border-gray-100 bg-red-50/50">
+                                <td className="py-3 px-4 font-medium text-red-900">{p.title}</td>
+                                <td className="py-3 px-4 font-bold text-red-600">{p.reports.length} phiếu</td>
+                                <td className="py-3 px-4 text-red-500 italic">Vi phạm</td>
+                                <td className="py-3 px-4 text-right">
+                                    <Link to={`/post/${p._id}`} state={{from:'/admin', tab: 'reports'}} className="text-blue-600 font-bold mr-3">Kiểm tra</Link>
+                                    <button onClick={()=>handleSafePost(p._id)} className="text-green-600 mr-3 font-bold">Gỡ</button>
+                                    <button onClick={()=>handleDeletePost(p._id, true)} className="text-red-600 font-bold">Xóa bài</button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
             </div>
         )}
 
-        {/* 6. BÁO CÁO - SỬA LINK XEM */}
-        {activeTab === 'reports' && (
-            <table style={{width:'100%', borderCollapse:'collapse'}}>
-                <thead><tr style={{background:'#fee2e2', textAlign:'left', color:'red'}}><th style={{padding:'10px'}}>Bài viết</th><th style={{padding:'10px'}}>Số báo cáo</th><th style={{padding:'10px'}}>Xử lý</th></tr></thead>
-                <tbody>
-                    {reportedPosts.map(p => (
-                        <tr key={p._id} style={{borderBottom:'1px solid #eee'}}>
-                            <td style={{padding:'10px'}}>{p.title}</td>
-                            <td style={{padding:'10px'}}><b>{p.reports.length}</b> phiếu</td>
-                            <td style={{padding:'10px'}}>
-                                <Link to={`/post/${p._id}`} state={{ from: '/admin', tab: 'reports' }} style={{marginRight:'10px', color:'blue'}}>Kiểm tra</Link>
-                                <button onClick={()=>handleSafePost(p._id)} style={{marginRight:'10px', color:'green'}}>Gỡ</button>
-                                <button onClick={()=>handleDeletePost(p._id, true)} style={{color:'red'}}>Xóa</button>
-                            </td>
-                        </tr>
+        {/* 3. INPUT FORMS (Topics, Categories) */}
+        {['topics', 'categories'].includes(activeTab) && (
+            <div className="max-w-xl mx-auto">
+                <div className="flex gap-2 mb-6">
+                    <input 
+                        value={activeTab==='topics'?newTopicName:newCatName} 
+                        onChange={e => activeTab==='topics'?setNewTopicName(e.target.value):setNewCatName(e.target.value)}
+                        placeholder={`Thêm ${activeTab==='topics'?'chủ đề':'danh mục'} mới...`} 
+                        className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
+                    <button onClick={activeTab==='topics'?handleAddTopic:handleAddCategory} className="bg-emerald-600 text-white px-6 rounded-lg font-bold hover:bg-emerald-700">Thêm</button>
+                </div>
+                <div className="space-y-2">
+                    {(activeTab==='topics'?topics:categories).map(item => (
+                        <div key={item._id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-100">
+                            <span className="font-medium text-gray-700">{item.name}</span>
+                            <button onClick={()=>activeTab==='topics'?handleDeleteTopic(item._id):handleDeleteCategory(item._id)} className="text-red-500 hover:bg-red-100 p-1 rounded transition">🗑️</button>
+                        </div>
                     ))}
-                </tbody>
-            </table>
+                </div>
+            </div>
         )}
-
       </div>
     </div>
   );

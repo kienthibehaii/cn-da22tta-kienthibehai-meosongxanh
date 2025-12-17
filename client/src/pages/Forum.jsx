@@ -5,70 +5,45 @@ import { Link } from 'react-router-dom';
 const Forum = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState(''); // Lọc theo Topic
-  const [topics, setTopics] = useState([]); // Danh sách chủ đề lấy từ API
+  const [filter, setFilter] = useState(''); 
+  const [topics, setTopics] = useState([]);
   
   const token = localStorage.getItem('token');
-  // Lấy user an toàn
-  const currentUser = localStorage.getItem('user_info') 
-    ? JSON.parse(localStorage.getItem('user_info')) 
-    : null;
+  const currentUser = localStorage.getItem('user_info') ? JSON.parse(localStorage.getItem('user_info')) : null;
 
-  // 1. Lấy danh sách Chủ đề (Topics) để hiển thị bộ lọc
   useEffect(() => {
+      // Lấy danh sách Topic
       axios.get('http://localhost:5000/api/admin/topics', { headers: { Authorization: token } })
            .then(res => setTopics(res.data))
-           .catch(() => {
-               // Fallback nếu chưa có API topics hoặc lỗi: Dùng danh sách cứng
-               setTopics([{ name: 'Thảo luận chung' }, { name: 'Mẹo sống xanh' }, { name: 'Hỏi đáp' }]);
-           });
+           .catch(() => setTopics([{ name: 'Thảo luận chung' }]));
   }, []);
 
-  // 2. Lấy bài viết khi bộ lọc thay đổi
-  useEffect(() => {
-    fetchPosts();
-  }, [filter]);
+  useEffect(() => { fetchPosts(); }, [filter]);
 
   const fetchPosts = async () => {
     try {
-      // SỬA: Gửi param 'topic' thay vì 'category'
       let url = 'http://localhost:5000/api/posts?type=forum&status=approved';
       if (filter) url += `&topic=${filter}`;
-      
       const res = await axios.get(url);
       setPosts(res.data);
       setLoading(false);
-    } catch (err) {
-      console.error(err);
-      setLoading(false);
-    }
+    } catch (err) { setLoading(false); }
   };
 
-  // --- CÁC HÀM TƯƠNG TÁC (Đã sửa lỗi kết nối) ---
   const handleLike = async (e, id) => {
-    e.preventDefault(); // Chặn việc bấm nút like mà bị nhảy trang
-    if (!token) return alert("Bạn cần đăng nhập để thích bài viết!");
-    
+    e.preventDefault();
+    if (!token) return alert("Bạn cần đăng nhập!");
     try {
       await axios.put(`http://localhost:5000/api/posts/${id}/like`, {}, { headers: { Authorization: token } });
-      
-      // Cập nhật giao diện ngay lập tức
       setPosts(posts.map(p => {
         if (p._id === id) {
-          const safeLikes = p.likes || [];
-          const isLiked = safeLikes.includes(currentUser?.id);
-          return {
-            ...p,
-            likes: isLiked 
-              ? safeLikes.filter(uid => uid !== currentUser.id) 
-              : [...safeLikes, currentUser.id]
-          };
+          const likes = p.likes || [];
+          const isLiked = likes.includes(currentUser?.id);
+          return { ...p, likes: isLiked ? likes.filter(uid => uid !== currentUser.id) : [...likes, currentUser.id] };
         }
         return p;
       }));
-    } catch (err) { 
-        alert("Lỗi kết nối! Hãy thử đăng xuất và đăng nhập lại."); 
-    }
+    } catch (err) { alert("Lỗi kết nối!"); }
   };
 
   const handleSave = async (e, id) => {
@@ -77,125 +52,78 @@ const Forum = () => {
     try {
         await axios.put(`http://localhost:5000/api/posts/${id}/save`, {}, { headers: { Authorization: token } });
         alert("✅ Đã lưu bài viết!");
-    } catch (err) { alert("Lỗi kết nối server"); }
+    } catch (err) { alert("Lỗi kết nối!"); }
   };
 
   const handleReport = async (e, id) => {
     e.preventDefault();
     if (!token) return alert("Bạn cần đăng nhập!");
-    if(confirm("Báo cáo bài viết này vi phạm?")) {
+    if(confirm("Báo cáo vi phạm?")) {
         try {
             await axios.post(`http://localhost:5000/api/posts/${id}/report`, {}, { headers: { Authorization: token } });
             alert("✅ Đã gửi báo cáo!");
-        } catch (err) { alert("Lỗi kết nối"); }
+        } catch (err) { alert("Lỗi kết nối!"); }
     }
   };
 
   return (
-    <div className="forum-page" style={{maxWidth: '1000px', margin: '20px auto', padding: '0 20px'}}>
-      
-      {/* HEADER */}
-      <div className="forum-header" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px'}}>
+    <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="flex flex-col md:flex-row justify-between items-end md:items-center mb-8 gap-4">
         <div>
-            <h1 style={{color: '#10b981', margin: 0}}>💬 Diễn Đàn Sống Xanh</h1>
-            <p style={{color: '#666', margin: '5px 0 0 0'}}>Cùng thảo luận, chia sẻ kinh nghiệm bảo vệ môi trường</p>
+            <h1 className="text-3xl font-bold text-gray-800">💬 Diễn Đàn Sống Xanh</h1>
+            <p className="text-gray-500 mt-1">Cùng thảo luận, chia sẻ kinh nghiệm bảo vệ môi trường</p>
         </div>
-        <Link to="/create-post" className="btn-create" style={{background: '#3b82f6', color: 'white', padding: '12px 20px', borderRadius: '8px', fontWeight: 'bold', textDecoration: 'none'}}>
-            ➕ Viết bài mới
+        <Link to="/create-post" className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-full font-bold shadow-lg shadow-emerald-200 transition flex items-center gap-2 transform hover:-translate-y-0.5">
+            <span>➕</span> Viết bài mới
         </Link>
       </div>
 
-      {/* --- SỬA BỘ LỌC: DÙNG TOPIC THAY VÌ CATEGORY CŨ --- */}
-      <div className="filter-bar" style={{marginBottom: '20px', display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '10px'}}>
-        <button 
-            onClick={() => setFilter('')}
-            style={{
-                padding: '8px 16px', borderRadius: '20px', border: '1px solid #ddd',
-                background: filter === '' ? '#10b981' : 'white',
-                color: filter === '' ? 'white' : '#555',
-                cursor: 'pointer', whiteSpace: 'nowrap'
-            }}
-        >
-            Tất cả
-        </button>
-        
-        {/* Render danh sách Topic lấy từ API */}
+      {/* Topics Filter */}
+      <div className="flex gap-2 overflow-x-auto pb-4 mb-4 scrollbar-hide">
+        <button onClick={() => setFilter('')} className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all border ${filter === '' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>Tất cả</button>
         {topics.map((t, index) => (
-            <button 
-                key={index} 
-                onClick={() => setFilter(t.name)}
-                style={{
-                    padding: '8px 16px', borderRadius: '20px', border: '1px solid #ddd',
-                    background: filter === t.name ? '#10b981' : 'white',
-                    color: filter === t.name ? 'white' : '#555',
-                    cursor: 'pointer', whiteSpace: 'nowrap'
-                }}
-            >
-                {t.name}
-            </button>
+            <button key={index} onClick={() => setFilter(t.name)} className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all border ${filter === t.name ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>{t.name}</button>
         ))}
       </div>
 
-      {/* DANH SÁCH BÀI VIẾT */}
-      {loading ? <p>Đang tải...</p> : (
-        <div className="forum-list">
-            {posts.length === 0 ? <p style={{textAlign:'center', color:'#888'}}>Chưa có bài viết nào.</p> : null}
+      {/* Post List */}
+      {loading ? <div className="text-center py-20 text-gray-400">Đang tải dữ liệu...</div> : (
+        <div className="space-y-6">
+            {posts.length === 0 ? <div className="text-center py-20 bg-white rounded-2xl border border-gray-100 text-gray-500">Chưa có bài viết nào.</div> : null}
             
             {posts.map(post => {
                 const safeLikes = post.likes || [];
-                const isLiked = currentUser && safeLikes.includes(currentUser?.id);
+                const isLiked = currentUser && safeLikes.includes(currentUser.id);
                 
                 return (
-                    <div key={post._id} className="forum-card" style={{background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '20px', display: 'flex', gap: '20px'}}>
-                        
-                        {/* Cột trái: Vote/Like */}
-                        <div className="vote-column" style={{display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '50px'}}>
-                            <button onClick={(e) => handleLike(e, post._id)} style={{background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.5rem'}}>
-                                {isLiked ? '❤️' : '🤍'}
+                    <div key={post._id} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all flex gap-6">
+                        <div className="flex flex-col items-center gap-1 min-w-[50px]">
+                            <button onClick={(e) => handleLike(e, post._id)} className="w-10 h-10 rounded-full bg-gray-50 hover:bg-red-50 flex items-center justify-center transition group">
+                                <span className={`text-xl ${isLiked ? '' : 'grayscale opacity-50 group-hover:grayscale-0 group-hover:opacity-100'}`}>❤️</span>
                             </button>
-                            <span style={{fontWeight: 'bold', color: '#555'}}>{safeLikes.length}</span>
+                            <span className="font-bold text-gray-700 text-sm">{safeLikes.length}</span>
                         </div>
 
-                        {/* Cột phải: Nội dung */}
-                        <div className="content-column" style={{flex: 1}}>
-                            <div className="meta" style={{fontSize: '0.85rem', color: '#888', marginBottom: '5px'}}>
-                                {/* Hiển thị Tên Topic thay vì Category cũ */}
-                                <span className="tag" style={{background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: '4px', marginRight: '10px', fontWeight: 'bold'}}>
-                                    {post.forumTopic || post.category || 'Thảo luận'}
-                                </span>
-                                <span>Đăng bởi <b>{post.author?.fullName}</b> • {new Date(post.createdAt).toLocaleDateString()}</span>
+                        <div className="flex-1">
+                            <div className="flex items-center gap-3 text-xs text-gray-500 mb-2">
+                                <span className="bg-emerald-50 text-emerald-700 px-2 py-1 rounded-md font-bold">{post.category || post.forumTopic}</span>
+                                <span>•</span>
+                                <span className="font-medium text-gray-700">{post.author?.fullName}</span>
+                                <span>•</span>
+                                <span>{new Date(post.createdAt).toLocaleDateString()}</span>
                             </div>
 
-                            <Link to={`/post/${post._id}`} style={{textDecoration: 'none', color: '#333'}}>
-                                <h2 style={{margin: '5px 0 10px 0', fontSize: '1.4rem'}}>{post.title}</h2>
+                            <Link to={`/post/${post._id}`} className="block group">
+                                <h2 className="text-xl font-bold text-gray-800 mb-2 group-hover:text-emerald-600 transition">{post.title}</h2>
+                                <p className="text-gray-600 text-sm leading-relaxed mb-4 line-clamp-3 whitespace-pre-line">{post.content}</p>
+                                {post.image && <img src={post.image} className="w-full h-64 object-cover rounded-xl mb-4 border border-gray-100" />}
                             </Link>
 
-                            {/* --- SỬA: HIỂN THỊ TOÀN BỘ NỘI DUNG (KHÔNG CẮT) --- */}
-                            <p style={{color: '#555', lineHeight: '1.6', marginBottom: '15px', whiteSpace: 'pre-line'}}>
-                                {post.content} 
-                            </p>
-                            {/* ----------------------------------------------- */}
-
-                            {post.image && (
-                                <Link to={`/post/${post._id}`}>
-                                    <img src={post.image} alt="Thumbnail" style={{height: '200px', borderRadius: '8px', objectFit: 'cover', marginBottom: '15px'}} />
-                                </Link>
-                            )}
-
-                            {/* Footer */}
-                            <div className="card-footer" style={{display: 'flex', gap: '20px', borderTop: '1px solid #eee', paddingTop: '10px', color: '#666', fontSize: '0.9rem'}}>
-                                <Link to={`/post/${post._id}`} style={{display: 'flex', alignItems: 'center', gap: '5px', textDecoration: 'none', color: '#666'}}>
-                                    💬 {post.commentsCount || 0} Bình luận
-                                </Link>
-                                <span style={{display: 'flex', alignItems: 'center', gap: '5px'}}>
-                                    👁️ {post.views} lượt xem
-                                </span>
-                                <button onClick={(e) => handleSave(e, post._id)} style={{background: 'transparent', border: 'none', cursor: 'pointer', color: '#666', marginLeft: 'auto'}}>
-                                    💾 Lưu bài
-                                </button>
-                                <button onClick={(e) => handleReport(e, post._id)} style={{background: 'transparent', border: 'none', cursor: 'pointer', color: '#ef4444'}}>
-                                    🚩 Báo cáo
-                                </button>
+                            <div className="flex items-center gap-6 pt-4 border-t border-gray-100 text-sm text-gray-500 font-medium">
+                                <Link to={`/post/${post._id}`} className="flex items-center gap-2 hover:text-emerald-600 transition"><span>💬</span> {post.commentsCount || 0} Bình luận</Link>
+                                <div className="flex items-center gap-2"><span>👁️</span> {post.views}</div>
+                                <button onClick={(e) => handleSave(e, post._id)} className="ml-auto hover:text-blue-600 transition flex items-center gap-1"><span>💾</span> Lưu</button>
+                                <button onClick={(e) => handleReport(e, post._id)} className="hover:text-red-500 transition flex items-center gap-1"><span>🚩</span> Báo cáo</button>
                             </div>
                         </div>
                     </div>
@@ -206,4 +134,5 @@ const Forum = () => {
     </div>
   );
 };
+
 export default Forum;

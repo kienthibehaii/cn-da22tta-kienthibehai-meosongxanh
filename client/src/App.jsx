@@ -1,30 +1,28 @@
 import { useState, useEffect } from 'react';
-import { Routes, Route, Link, useNavigate } from 'react-router-dom';
-// import axios from 'axios'; // Bỏ nếu không dùng trực tiếp ở đây
-import './App.css';
+import { Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
+import Footer from './components/Footer'; // Đảm bảo bạn đã tạo file Footer.jsx như bài trước
 
-// Import các trang
+// Import Pages
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import Admin from './pages/Admin';
-import CreatePost from './pages/CreatePost';
-import Forum from './pages/Forum';
-import Profile from './pages/Profile';
-import PostDetail from './pages/PostDetail';
-import EditPost from './pages/EditPost';
 import News from './pages/News';
 import Articles from './pages/Articles';
+import Forum from './pages/Forum';
+import Admin from './pages/Admin';
+import CreatePost from './pages/CreatePost';
+import PostDetail from './pages/PostDetail';
+import EditPost from './pages/EditPost';
+import Profile from './pages/Profile';
 
 function App() {
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const savedUser = localStorage.getItem('user_info');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
+    if (savedUser) setUser(JSON.parse(savedUser));
   }, []);
 
   const handleLogout = () => {
@@ -33,37 +31,68 @@ function App() {
     navigate('/login');
   };
 
-  // Hàm kiểm tra quyền Admin (bao gồm cả admin và super_admin)
+  const isActive = (path) => location.pathname === path ? "text-emerald-600 bg-emerald-50 font-bold" : "text-gray-600 hover:text-emerald-600 hover:bg-gray-50 font-medium";
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
 
   return (
-    <div className="app">
-      <header>
-        <div className="logo">🌿 EcoLife</div>
-        <nav>
-            <Link to="/">Trang Chủ</Link>
-            <Link to="/news">Tin Tức</Link>
-            <Link to="/articles">Kiến Thức</Link>
-            <Link to="/forum">Diễn Đàn</Link>
+    <div className="min-h-screen flex flex-col font-sans bg-gray-50 text-gray-800">
+      {/* HEADER */}
+      <header className="bg-white/90 backdrop-blur-md sticky top-0 z-50 border-b border-gray-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
             
-            {/* Hiển thị nút Quản trị cho cả admin và super_admin */}
-            {isAdmin && <Link to="/admin" style={{color:'red', fontWeight:'bold'}}>Quản Trị</Link>}
-            
-            {user ? (
-                <div className="user-menu">
-                    <Link to="/profile">👤 {user.fullName}</Link>
-                    <button onClick={handleLogout} className="btn-logout">Thoát</button>
+            {/* Logo */}
+            <Link to="/" className="flex items-center gap-2 group">
+              <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center text-2xl group-hover:rotate-12 transition-transform">🌿</div>
+              <span className="text-2xl font-extrabold bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">EcoLife</span>
+            </Link>
+
+            {/* Desktop Navigation */}
+            <nav className="hidden md:flex gap-1">
+                <Link to="/" className={`px-4 py-2 rounded-full text-sm transition-all ${isActive('/')}`}>Trang Chủ</Link>
+                <Link to="/news" className={`px-4 py-2 rounded-full text-sm transition-all ${isActive('/news')}`}>Tin Tức</Link>
+                <Link to="/articles" className={`px-4 py-2 rounded-full text-sm transition-all ${isActive('/articles')}`}>Kiến Thức</Link>
+                <Link to="/forum" className={`px-4 py-2 rounded-full text-sm transition-all ${isActive('/forum')}`}>Diễn Đàn</Link>
+                {isAdmin && (
+                    <Link to="/admin" className={`px-4 py-2 rounded-full text-sm transition-all ${isActive('/admin')} text-red-600 hover:bg-red-50 hover:text-red-700`}>🛡️ Quản Trị</Link>
+                )}
+            </nav>
+
+            {/* User Action */}
+            <div className="flex items-center gap-4">
+              {user ? (
+                <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
+                  <Link to="/profile" className="flex items-center gap-2 hover:bg-gray-100 px-3 py-1.5 rounded-full transition group">
+                    {user.avatar ? (
+                        <img src={user.avatar} className="w-8 h-8 rounded-full object-cover border border-emerald-200" />
+                    ) : (
+                        <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-sm">
+                        {user.fullName.charAt(0)}
+                        </div>
+                    )}
+                    <span className="text-sm font-medium text-gray-700 max-w-[100px] truncate hidden sm:block group-hover:text-emerald-700">{user.fullName}</span>
+                  </Link>
+                  <button onClick={handleLogout} className="text-gray-400 hover:text-red-500 transition p-2 rounded-full hover:bg-red-50" title="Đăng xuất">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+                    </svg>
+                  </button>
                 </div>
-            ) : (
-                <div className="auth-links">
-                    <Link to="/login">Đăng Nhập</Link>
-                    <Link to="/register" className="btn-register-nav">Đăng Ký</Link>
+              ) : (
+                <div className="flex gap-3">
+                  <Link to="/login" className="text-gray-600 hover:text-emerald-600 font-medium text-sm px-3 py-2 transition-colors">Đăng Nhập</Link>
+                  <Link to="/register" className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-full text-sm font-bold shadow-lg shadow-emerald-200 transition-all hover:shadow-emerald-300 transform hover:-translate-y-0.5">
+                    Đăng Ký
+                  </Link>
                 </div>
-            )}
-        </nav>
+              )}
+            </div>
+          </div>
+        </div>
       </header>
 
-      <main>
+      {/* MAIN CONTENT */}
+      <main className="flex-grow pb-10">
         <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login setUser={setUser} />} />
@@ -80,10 +109,12 @@ function App() {
             <Route path="/profile" element={user ? <Profile /> : <Login setUser={setUser}/>} />
             <Route path="/profile/:id" element={<Profile />} />
             
-            {/* Route Admin bảo vệ chặt chẽ hơn */}
-            <Route path="/admin" element={isAdmin ? <Admin /> : <div style={{textAlign:'center', marginTop:'50px'}}><h2>🚫 Bạn không có quyền truy cập!</h2></div>} />
+            <Route path="/admin" element={isAdmin ? <Admin /> : <div className="text-center mt-20 text-red-500 font-bold text-xl">🚫 Bạn không có quyền truy cập!</div>} />
         </Routes>
       </main>
+
+      {/* FOOTER */}
+      <Footer />
     </div>
   );
 }
