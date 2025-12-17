@@ -4,6 +4,7 @@ const path = require('path');
 const connectDB = require('./config/db');
 const authController = require('./controllers/authController');
 
+
 // --- IMPORT ROUTES ---
 const authRoutes = require('./routes/authRoutes');
 const postRoutes = require('./routes/postRoutes');
