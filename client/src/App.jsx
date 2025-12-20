@@ -6,6 +6,7 @@ import Footer from './components/Footer'; // Đảm bảo bạn đã tạo file 
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
 import News from './pages/News';
 import Articles from './pages/Articles';
 import Forum from './pages/Forum';
@@ -97,6 +98,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login setUser={setUser} />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
             
             <Route path="/news" element={<News />} />
             <Route path="/articles" element={<Articles />} />

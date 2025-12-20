@@ -33,6 +33,48 @@ const Home = () => {
                     setPinnedArticles(pinned);
                 })
                 .catch(err => console.error("Lỗi tải bài ghim:", err));
+
+            console.log('API_URL:', API_URL); // Debug log
+            
+            // Test API connection
+            try {
+                const testRes = await axios.get(`${API_URL}/posts/test`);
+                console.log('API Test:', testRes.data);
+            } catch (testErr) {
+                console.error('API Test failed:', testErr);
+            }
+            
+            // Lấy 3 Tin tức mới nhất
+            try {
+                const newsRes = await axios.get(`${API_URL}/posts?type=news&status=approved&limit=3&sort=createdAt`);
+                console.log('News data:', newsRes.data);
+                setNews(newsRes.data || []);
+            } catch (err) {
+                console.error("Lỗi tải tin tức:", err);
+                setNews([]);
+            }
+
+            // Lấy 3 bài viết Forum có nhiều lượt xem nhất
+            try {
+                const forumRes = await axios.get(`${API_URL}/posts?type=forum&status=approved&limit=3&sort=views`);
+                console.log('Forum data:', forumRes.data);
+                setTopPosts(forumRes.data || []);
+            } catch (err) {
+                console.error("Lỗi tải top bài:", err);
+                setTopPosts([]);
+            }
+
+            // Lấy Bài viết Kiến thức để lọc bài GHIM
+            try {
+                const articlesRes = await axios.get(`${API_URL}/posts?type=article&status=approved`);
+                console.log('Articles data:', articlesRes.data);
+                const pinned = (articlesRes.data || []).filter(p => p.isPinned);
+                setPinnedArticles(pinned);
+            } catch (err) {
+                console.error("Lỗi tải bài ghim:", err);
+                setPinnedArticles([]);
+            }
+
         } catch (e) {
             console.error("Lỗi kết nối Server:", e);
         }
@@ -93,12 +135,55 @@ const Home = () => {
   };
 
   const getAqiInfo = (aqi) => {
+
       if (aqi <= 50) return { value: aqi, level: 'Tốt', color: '#10b981', desc: 'Không khí trong lành.' };
       if (aqi <= 100) return { value: aqi, level: 'Trung bình', color: '#eab308', desc: 'Chấp nhận được.' };
       if (aqi <= 150) return { value: aqi, level: 'Kém', color: '#f97316', desc: 'Nhóm nhạy cảm hạn chế ra ngoài.' };
       if (aqi <= 200) return { value: aqi, level: 'Xấu', color: '#ef4444', desc: 'Có hại sức khỏe.' };
       return { value: aqi, level: 'Nguy hại', color: '#881337', desc: 'Cảnh báo khẩn cấp!' };
+
+      if (aqi <= 50) return { 
+        value: aqi, 
+        level: 'Tốt', 
+        color: '#10b981', 
+        desc: 'Không khí trong lành.',
+        range: '0-50',
+        explanation: 'Chất lượng không khí được coi là đạt tiêu chuẩn và ô nhiễm không khí gây ra ít hoặc không có nguy cơ.'
+      };
+      if (aqi <= 100) return { 
+        value: aqi, 
+        level: 'Trung bình', 
+        color: '#eab308', 
+        desc: 'Chấp nhận được.',
+        range: '51-100',
+        explanation: 'Chất lượng không khí có thể chấp nhận được đối với hầu hết mọi người, nhóm nhạy cảm có thể gặp vấn đề sức khỏe nhẹ.'
+      };
+      if (aqi <= 150) return { 
+        value: aqi, 
+        level: 'Kém', 
+        color: '#f97316', 
+        desc: 'Nhóm nhạy cảm hạn chế ra ngoài.',
+        range: '101-150',
+        explanation: 'Nhóm nhạy cảm có thể gặp vấn đề sức khỏe. Công chúng nói chung ít có khả năng bị ảnh hưởng.'
+      };
+      if (aqi <= 200) return { 
+        value: aqi, 
+        level: 'Xấu', 
+        color: '#ef4444', 
+        desc: 'Có hại sức khỏe.',
+        range: '151-200',
+        explanation: 'Mọi người có thể bắt đầu gặp vấn đề sức khỏe; nhóm nhạy cảm có thể gặp vấn đề sức khỏe nghiêm trọng hơn.'
+      };
+      return { 
+        value: aqi, 
+        level: 'Nguy hại', 
+        color: '#881337', 
+        desc: 'Cảnh báo khẩn cấp!',
+        range: '201+',
+        explanation: 'Cảnh báo sức khỏe khẩn cấp. Toàn bộ dân số có nhiều khả năng bị ảnh hưởng.'
+      };
   };
+
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -145,7 +230,12 @@ const Home = () => {
                         {aqiData.value}
                     </div>
                     <div className="font-bold text-xl mb-1">{aqiData.level}</div>
+
                     <p className="text-xs text-emerald-100 opacity-80 line-clamp-2">{aqiData.desc}</p>
+
+                    <div className="text-xs text-emerald-100 opacity-80 mb-2">Chỉ số: {aqiData.range}</div>
+                    <p className="text-xs text-emerald-100 opacity-80 line-clamp-3 leading-relaxed">{aqiData.explanation}</p>
+
                  </div>
              )}
          </div>
@@ -175,8 +265,9 @@ const Home = () => {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 mb-12">
-          
           {/* 3. TIN TỨC MỚI */}
+
+          {/* 3. TIN TỨC MỚI NHẤT (3 bài mới nhất) */}
           <div className="lg:col-span-2">
             <div className="flex justify-between items-center mb-6 border-b-2 border-emerald-100 pb-2">
                 <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><span className="text-emerald-500">📰</span> Tin Tức Mới Nhất</h2>
@@ -184,6 +275,8 @@ const Home = () => {
             </div>
             <div className="space-y-5">
                 {news.length === 0 ? <p className="text-gray-500 italic py-10 text-center bg-gray-50 rounded-xl border border-gray-100">Chưa có tin tức nào.</p> : news.map(item => (
+                
+
                     <Link to={`/post/${item._id}`} key={item._id} className="block group">
                         <div className="bg-white p-4 rounded-2xl shadow-sm hover:shadow-md border border-gray-100 transition flex gap-5 items-start">
                             <div className="w-32 h-24 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100">
@@ -203,12 +296,16 @@ const Home = () => {
             </div>
           </div>
 
+
           {/* 4. TOP DIỄN ĐÀN (SIDEBAR) */}
+
+          {/* 4. SÔI ĐỘNG NHẤT (3 bài có nhiều lượt xem nhất từ diễn đàn) */}
+
           <div>
             <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b-2 border-orange-100 pb-2 flex items-center gap-2"><span className="text-orange-500">🔥</span> Sôi Động Nhất</h2>
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
                 <div className="space-y-6">
-                    {topPosts.length === 0 ? <p className="text-gray-500 italic text-center py-5">Chưa có bài viết nổi bật.</p> : topPosts.map((post, index) => (
+                    {topPosts.length === 0 ? <p className="text-gray-500 italic text-center py-5">Chưa có bài viết nổi bật.</p> : topPosts.slice(0, 3).map((post, index) => (
                         <Link to={`/post/${post._id}`} key={post._id} className="flex gap-4 items-start group">
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-sm ${index === 0 ? 'bg-gradient-to-br from-yellow-400 to-orange-500 text-white' : index === 1 ? 'bg-gray-200 text-gray-600' : index === 2 ? 'bg-orange-100 text-orange-600' : 'bg-gray-50 text-gray-400'}`}>
                                 {index + 1}
@@ -216,7 +313,7 @@ const Home = () => {
                             <div>
                                 <h4 className="text-sm font-bold text-gray-800 group-hover:text-emerald-600 transition line-clamp-2 leading-snug mb-1">{post.title}</h4>
                                 <div className="text-xs text-gray-400 flex items-center gap-2 font-medium">
-                                    <span className="flex items-center gap-1 text-gray-500">👁️ {post.views}</span>
+                                    <span className="flex items-center gap-1 text-orange-500 font-bold">👁️ {post.views}</span>
                                     <span>•</span>
                                     <span>{post.author?.fullName}</span>
                                 </div>

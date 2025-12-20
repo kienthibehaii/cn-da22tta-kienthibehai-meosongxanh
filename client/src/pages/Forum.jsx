@@ -7,22 +7,58 @@ const Forum = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState(''); 
   const [topics, setTopics] = useState([]);
+  const [topicCounts, setTopicCounts] = useState({}); // Đếm số bài viết theo topic
   
   const token = localStorage.getItem('token');
   const currentUser = localStorage.getItem('user_info') ? JSON.parse(localStorage.getItem('user_info')) : null;
 
   useEffect(() => {
-      // Lấy danh sách Topic
-      axios.get('http://localhost:5000/api/admin/topics', { headers: { Authorization: token } })
-           .then(res => setTopics(res.data))
-           .catch(() => setTopics([{ name: 'Thảo luận chung' }]));
+      // Lấy danh sách Topic với API URL động
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      axios.get(`${API_URL}/api/admin/topics`, { headers: { Authorization: token } })
+           .then(res => {
+             setTopics(res.data);
+             // Lấy số lượng bài viết cho mỗi topic
+             fetchTopicCounts(res.data);
+           })
+           .catch(() => setTopics([
+             { name: 'Thảo luận chung' },
+             { name: 'Môi trường' },
+             { name: 'Tái chế' },
+             { name: 'Tiết kiệm năng lượng' }
+           ]));
   }, []);
+
+  const fetchTopicCounts = async (topicList) => {
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    const counts = {};
+    
+    try {
+      // Đếm tổng số bài viết
+      const totalRes = await axios.get(`${API_URL}/api/posts?type=forum&status=approved`);
+      counts[''] = totalRes.data.length;
+
+      // Đếm cho từng topic
+      for (const topic of topicList) {
+        try {
+          const res = await axios.get(`${API_URL}/api/posts?type=forum&status=approved&topic=${topic.name}`);
+          counts[topic.name] = res.data.length;
+        } catch (err) {
+          counts[topic.name] = 0;
+        }
+      }
+      setTopicCounts(counts);
+    } catch (err) {
+      console.error('Error fetching topic counts:', err);
+    }
+  };
 
   useEffect(() => { fetchPosts(); }, [filter]);
 
   const fetchPosts = async () => {
     try {
-      let url = 'http://localhost:5000/api/posts?type=forum&status=approved';
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      let url = `${API_URL}/api/posts?type=forum&status=approved`;
       if (filter) url += `&topic=${filter}`;
       const res = await axios.get(url);
       setPosts(res.data);
@@ -34,7 +70,8 @@ const Forum = () => {
     e.preventDefault();
     if (!token) return alert("Bạn cần đăng nhập!");
     try {
-      await axios.put(`http://localhost:5000/api/posts/${id}/like`, {}, { headers: { Authorization: token } });
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      await axios.put(`${API_URL}/api/posts/${id}/like`, {}, { headers: { Authorization: token } });
       setPosts(posts.map(p => {
         if (p._id === id) {
           const likes = p.likes || [];
@@ -50,7 +87,8 @@ const Forum = () => {
     e.preventDefault();
     if (!token) return alert("Bạn cần đăng nhập!");
     try {
-        await axios.put(`http://localhost:5000/api/posts/${id}/save`, {}, { headers: { Authorization: token } });
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        await axios.put(`${API_URL}/api/posts/${id}/save`, {}, { headers: { Authorization: token } });
         alert("✅ Đã lưu bài viết!");
     } catch (err) { alert("Lỗi kết nối!"); }
   };
@@ -60,7 +98,8 @@ const Forum = () => {
     if (!token) return alert("Bạn cần đăng nhập!");
     if(confirm("Báo cáo vi phạm?")) {
         try {
-            await axios.post(`http://localhost:5000/api/posts/${id}/report`, {}, { headers: { Authorization: token } });
+            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+            await axios.post(`${API_URL}/api/posts/${id}/report`, {}, { headers: { Authorization: token } });
             alert("✅ Đã gửi báo cáo!");
         } catch (err) { alert("Lỗi kết nối!"); }
     }
@@ -78,12 +117,75 @@ const Forum = () => {
         </Link>
       </div>
 
-      {/* Topics Filter */}
-      <div className="flex gap-2 overflow-x-auto pb-4 mb-4 scrollbar-hide">
-        <button onClick={() => setFilter('')} className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all border ${filter === '' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>Tất cả</button>
-        {topics.map((t, index) => (
-            <button key={index} onClick={() => setFilter(t.name)} className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all border ${filter === t.name ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>{t.name}</button>
-        ))}
+      {/* Topics Filter - Thanh ngang di chuyển */}
+      <div className="mb-6">
+        <div className="flex items-center gap-3 overflow-x-auto pb-3 topic-scroll scroll-smooth">
+          <button 
+            onClick={() => setFilter('')} 
+            className={`px-6 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+              filter === '' 
+                ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-200 ring-2 ring-emerald-300 ring-opacity-50' 
+                : 'bg-white text-gray-600 border border-gray-200 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700'
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              Tất cả
+              {topicCounts[''] && (
+                <span className={`px-2 py-0.5 rounded-full text-xs ${
+                  filter === '' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-700'
+                }`}>
+                  {topicCounts['']}
+                </span>
+              )}
+            </span>
+          </button>
+          
+          {topics.map((topic, index) => (
+            <button 
+              key={index} 
+              onClick={() => setFilter(topic.name)} 
+              className={`px-6 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+                filter === topic.name 
+                  ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-200 ring-2 ring-emerald-300 ring-opacity-50' 
+                  : 'bg-white text-gray-600 border border-gray-200 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700'
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                {topic.name}
+                {topicCounts[topic.name] !== undefined && (
+                  <span className={`px-2 py-0.5 rounded-full text-xs ${
+                    filter === topic.name ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-700'
+                  }`}>
+                    {topicCounts[topic.name]}
+                  </span>
+                )}
+              </span>
+            </button>
+          ))}
+        </div>
+        
+        {/* Indicator line với animation */}
+        <div className="relative">
+          <div className="h-0.5 bg-gray-200 rounded-full"></div>
+          <div className="absolute top-0 h-0.5 bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all duration-500 ease-out" 
+               style={{width: filter ? '60px' : '80px', left: filter ? '100px' : '0px'}}></div>
+        </div>
+        
+        {/* Filter info */}
+        {filter && (
+          <div className="mt-3 flex items-center gap-2 text-sm text-emerald-600">
+            <span className="bg-emerald-50 px-3 py-1 rounded-full font-medium">
+              Đang lọc: {filter}
+            </span>
+            <button 
+              onClick={() => setFilter('')}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+              title="Xóa bộ lọc"
+            >
+              ✕
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Post List */}

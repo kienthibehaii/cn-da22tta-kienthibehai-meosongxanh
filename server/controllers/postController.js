@@ -48,7 +48,9 @@ exports.createPost = async (req, res) => {
 // --- 2. LẤY DANH SÁCH BÀI VIẾT ---
 exports.getPosts = async (req, res) => {
   try {
-    const { type, status, category, topic, search } = req.query;
+    const { type, status, category, topic, search, limit, sort } = req.query;
+    console.log('Query params:', req.query); // Debug log
+    
     let query = {};
     
     // Lọc theo trạng thái và loại
@@ -66,14 +68,38 @@ exports.getPosts = async (req, res) => {
     if (search) {
         query.title = { $regex: search, $options: 'i' };
     }
-  
-    const posts = await Post.find(query)
+
+    console.log('MongoDB query:', query); // Debug log
+
+    // Xây dựng query với populate
+    let postQuery = Post.find(query)
       .populate('author', 'username fullName avatar')
-      .populate('newsCategory', 'name') // Populate tên danh mục nếu cần
-      .sort({ isPinned: -1, createdAt: -1 });
+      .populate('newsCategory', 'name'); // Populate tên danh mục nếu cần
+    
+    // Xử lý sort
+    if (sort === 'views') {
+      postQuery = postQuery.sort({ views: -1, createdAt: -1 });
+      console.log('Sorting by views'); // Debug log
+    } else if (sort === 'createdAt') {
+      postQuery = postQuery.sort({ createdAt: -1 });
+      console.log('Sorting by createdAt'); // Debug log
+    } else {
+      postQuery = postQuery.sort({ isPinned: -1, createdAt: -1 });
+    }
+    
+    // Xử lý limit
+    if (limit) {
+      postQuery = postQuery.limit(parseInt(limit));
+      console.log('Limiting to:', limit); // Debug log
+    }
       
+    const posts = await postQuery;
+    console.log('Found posts:', posts.length); // Debug log
     res.json(posts);
-  } catch (e) { res.status(500).json({ message: e.message }); }
+  } catch (e) { 
+    console.error('Error in getPosts:', e); // Debug log
+    res.status(500).json({ message: e.message }); 
+  }
 };
 
 // --- 3. CÁC HÀM PHỤ TRỢ (Like, Comment, Detail...) ---

@@ -66,9 +66,14 @@ const Login = ({ setUser }) => {
           <button type="submit">Vào hệ thống</button>
         </form>
         
-        <p style={{marginTop: '20px'}}>
-          Chưa có tài khoản? <Link to="/register" style={{color: 'var(--primary-color)', fontWeight: 'bold'}}>Đăng ký ngay</Link>
-        </p>
+        <div className="auth-links">
+          <p>
+            Chưa có tài khoản? <Link to="/register" style={{color: 'var(--primary-color)', fontWeight: 'bold'}}>Đăng ký ngay</Link>
+          </p>
+          <p>
+            <Link to="/forgot-password" style={{color: 'var(--secondary-color)', fontSize: '14px'}}>Quên mật khẩu?</Link>
+          </p>
+        </div>
       </div>
     </div>
   );

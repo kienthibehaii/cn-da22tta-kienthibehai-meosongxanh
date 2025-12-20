@@ -1,0 +1,37 @@
+services:
+  # Backend API Service
+  - type: web
+    name: ecolife-api
+    env: node
+    plan: free
+    buildCommand: cd server && npm install
+    startCommand: cd server && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: MONGO_URI
+        value: mongodb+srv://user:hxt9Btv60X1TcAb1@cluster0.jrrlmvo.mongodb.net/greenlife_mvc
+      - key: SECRET_KEY
+        value: green_life_secret_key_pro_secure_2024
+    healthCheckPath: /api/health
+
+  # Frontend Static Site
+  - type: static
+    name: ecolife-frontend
+    env: static
+    plan: free
+    buildCommand: cd client && npm install && npm run build
+    staticPublishPath: ./client/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: https://ecolife-api.onrender.com
+      - key: VITE_WEATHER_API_KEY
+        value: 278b369b634e6ed7f3fbb56044eb0196
+      - key: VITE_AQI_API_KEY
+        value: dd55bc5957b6d1acc6b9313ccd429835cdbf95f7

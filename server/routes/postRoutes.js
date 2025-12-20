@@ -6,6 +6,9 @@ const upload = require('../middleware/uploadMiddleware');
 
 // Public Routes
 router.get('/', postController.getPosts);
+router.get('/test', (req, res) => {
+  res.json({ message: 'Posts API is working', timestamp: new Date() });
+});
 router.get('/top', postController.getTopPosts);
 router.get('/:id', postController.getPostDetail);
 

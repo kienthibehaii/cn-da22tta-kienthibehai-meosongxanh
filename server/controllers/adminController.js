@@ -12,12 +12,45 @@ exports.getStats = async (req, res) => {
     const viewsData = await Post.aggregate([{ $group: { _id: null, total: { $sum: "$views" } } }]);
     const totalViews = viewsData[0]?.total || 0;
 
+    // Đếm tổng số comments (giả sử có field comments trong Post)
+    const commentsData = await Post.aggregate([
+      { $project: { commentCount: { $size: { $ifNull: ["$comments", []] } } } },
+      { $group: { _id: null, total: { $sum: "$commentCount" } } }
+    ]);
+    const totalComments = commentsData[0]?.total || 0;
+
     // Dữ liệu biểu đồ: Gom nhóm theo Category
     const chartData = await Post.aggregate([
         { $group: { _id: "$category", count: { $sum: 1 } } }
     ]);
 
-    res.json({ totalUsers, totalPosts, totalViews, chartData });
+    // Thống kê theo loại bài viết
+    const postTypeStats = await Post.aggregate([
+        { $group: { _id: "$type", count: { $sum: 1 } } }
+    ]);
+
+    // Thống kê người dùng mới trong 7 ngày qua
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const newUsersThisWeek = await User.countDocuments({ 
+      createdAt: { $gte: sevenDaysAgo } 
+    });
+
+    // Thống kê bài viết mới trong 7 ngày qua
+    const newPostsThisWeek = await Post.countDocuments({ 
+      createdAt: { $gte: sevenDaysAgo } 
+    });
+
+    res.json({ 
+      totalUsers, 
+      totalPosts, 
+      totalViews, 
+      totalComments,
+      chartData,
+      postTypeStats,
+      newUsersThisWeek,
+      newPostsThisWeek
+    });
   } catch (e) { res.status(500).json({ message: e.message }); }
 };
 

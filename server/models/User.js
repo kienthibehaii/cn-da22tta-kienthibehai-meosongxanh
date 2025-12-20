@@ -18,6 +18,7 @@ const UserSchema = new mongoose.Schema({
   
   isBanned: { type: Boolean, default: false },
   savedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }],
+  
   createdAt: { type: Date, default: Date.now }
 });
 

@@ -33,10 +33,24 @@ nav a.admin-link { color: var(--danger-color); }
 .auth-box h2 { color: var(--primary-color); margin-bottom: 25px; }
 .auth-box input { display: block; width: 100%; margin: 15px 0; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem; transition: border-color 0.2s; }
 .auth-box input:focus { border-color: var(--primary-color); outline: none; }
+.auth-box input:disabled { background-color: #f3f4f6; cursor: not-allowed; opacity: 0.6; }
 .auth-box button { width: 100%; padding: 12px; background: var(--primary-color); color: var(--white); border: none; border-radius: 8px; font-size: 1.1rem; font-weight: bold; cursor: pointer; transition: background 0.2s; margin-top: 10px; }
-.auth-box button:hover { background: var(--primary-dark); }
+.auth-box button:hover:not(:disabled) { background: var(--primary-dark); }
+.auth-box button:disabled { background: #9ca3af; cursor: not-allowed; }
 .auth-box button.outline { background: transparent; border: 2px solid var(--primary-color); color: var(--primary-color); }
-.auth-box button.outline:hover { background: #ecfdf5; }
+.auth-box button.outline:hover:not(:disabled) { background: #ecfdf5; }
+.auth-box .auth-links { margin-top: 20px; }
+.auth-box .auth-links p { margin: 8px 0; }
+
+/* Progress indicator cho forgot password */
+.progress-indicator { display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 24px; }
+.progress-step { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; transition: all 0.3s; }
+.progress-step.active { background-color: var(--primary-color); color: var(--white); }
+.progress-step.inactive { background-color: #e5e7eb; color: #6b7280; }
+.progress-line { width: 48px; height: 4px; border-radius: 2px; transition: all 0.3s; }
+.progress-line.active { background-color: var(--primary-color); }
+.progress-line.inactive { background-color: #e5e7eb; }
+
 /* Thông báo lỗi/thành công */
 .message-box { padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 0.9rem; }
 .message-box.error { background-color: #fee2e2; color: var(--danger-color); border: 1px solid #fca5a5; }
@@ -94,6 +108,27 @@ main { max-width: 1000px; margin: 30px auto; padding: 0 20px; }
 }
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* Smooth scroll cho topic filter */
+.scroll-smooth {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar cho topic filter */
+.topic-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+.topic-scroll::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 2px;
+}
+.topic-scroll::-webkit-scrollbar-thumb {
+  background: #10b981;
+  border-radius: 2px;
+}
+.topic-scroll::-webkit-scrollbar-thumb:hover {
+  background: #059669;
 }
 
 /* Typography đẹp cho bài viết chi tiết */
