@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
+import { API_URL } from '../apiConfig';
 
 const Forum = () => {
   const [posts, setPosts] = useState([]);
@@ -14,8 +15,7 @@ const Forum = () => {
 
   useEffect(() => {
       // Lấy danh sách Topic với API URL động
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      axios.get(`${API_URL}/api/admin/topics`, { headers: { Authorization: token } })
+      axios.get(`${API_URL}/admin/topics`, { headers: { Authorization: token } })
            .then(res => {
              setTopics(res.data);
              // Lấy số lượng bài viết cho mỗi topic
@@ -30,18 +30,17 @@ const Forum = () => {
   }, []);
 
   const fetchTopicCounts = async (topicList) => {
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
     const counts = {};
     
     try {
       // Đếm tổng số bài viết
-      const totalRes = await axios.get(`${API_URL}/api/posts?type=forum&status=approved`);
+      const totalRes = await axios.get(`${API_URL}/posts?type=forum&status=approved`);
       counts[''] = totalRes.data.length;
 
       // Đếm cho từng topic
       for (const topic of topicList) {
         try {
-          const res = await axios.get(`${API_URL}/api/posts?type=forum&status=approved&topic=${topic.name}`);
+          const res = await axios.get(`${API_URL}/posts?type=forum&status=approved&topic=${topic.name}`);
           counts[topic.name] = res.data.length;
         } catch (err) {
           counts[topic.name] = 0;
@@ -57,8 +56,7 @@ const Forum = () => {
 
   const fetchPosts = async () => {
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      let url = `${API_URL}/api/posts?type=forum&status=approved`;
+      let url = `${API_URL}/posts?type=forum&status=approved`;
       if (filter) url += `&topic=${filter}`;
       const res = await axios.get(url);
       setPosts(res.data);
@@ -70,8 +68,7 @@ const Forum = () => {
     e.preventDefault();
     if (!token) return alert("Bạn cần đăng nhập!");
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      await axios.put(`${API_URL}/api/posts/${id}/like`, {}, { headers: { Authorization: token } });
+      await axios.put(`${API_URL}/posts/${id}/like`, {}, { headers: { Authorization: token } });
       setPosts(posts.map(p => {
         if (p._id === id) {
           const likes = p.likes || [];
@@ -87,8 +84,7 @@ const Forum = () => {
     e.preventDefault();
     if (!token) return alert("Bạn cần đăng nhập!");
     try {
-        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-        await axios.put(`${API_URL}/api/posts/${id}/save`, {}, { headers: { Authorization: token } });
+        await axios.put(`${API_URL}/posts/${id}/save`, {}, { headers: { Authorization: token } });
         alert("✅ Đã lưu bài viết!");
     } catch (err) { alert("Lỗi kết nối!"); }
   };
@@ -98,8 +94,7 @@ const Forum = () => {
     if (!token) return alert("Bạn cần đăng nhập!");
     if(confirm("Báo cáo vi phạm?")) {
         try {
-            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-            await axios.post(`${API_URL}/api/posts/${id}/report`, {}, { headers: { Authorization: token } });
+            await axios.post(`${API_URL}/posts/${id}/report`, {}, { headers: { Authorization: token } });
             alert("✅ Đã gửi báo cáo!");
         } catch (err) { alert("Lỗi kết nối!"); }
     }

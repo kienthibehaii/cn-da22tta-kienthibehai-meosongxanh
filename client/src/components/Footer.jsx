@@ -57,15 +57,15 @@ const Footer = () => {
             <ul className="space-y-4 text-gray-500 text-sm">
               <li className="flex items-start gap-3">
                 <span className="text-emerald-600 mt-1">📍</span>
-                <span>Tòa nhà Innovation, Khu Công Nghệ Cao, TP. Thủ Đức, Việt Nam</span>
+                <span>Trì Phong, Hòa Lợi, Hưng Mỹ, Vĩnh Long, Việt Nam</span>
               </li>
               <li className="flex items-center gap-3">
                 <span className="text-emerald-600">📧</span>
-                <a href="mailto:contact@ecolife.vn" className="hover:text-emerald-600">contact@ecolife.vn</a>
+                <a href="mailto:kienbehai.dmx1234@gmail.com" className="hover:text-emerald-600">kienbehai.dmx1234@gmail.com</a>
               </li>
               <li className="flex items-center gap-3">
                 <span className="text-emerald-600">📞</span>
-                <a href="tel:+84901234567" className="hover:text-emerald-600">(+84) 90 123 4567</a>
+                <a href="tel:+843287829" className="hover:text-emerald-600">(+84) 43 287 829</a>
               </li>
             </ul>
           </div>

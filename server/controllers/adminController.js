@@ -1,6 +1,8 @@
 const User = require('../models/User');
 const Post = require('../models/Post');
 const Topic = require('../models/Topic');
+const Challenge = require('../models/Challenge');
+const Comment = require('../models/Comment');
 
 // 1. Thống kê Dashboard
 exports.getStats = async (req, res) => {
@@ -8,26 +10,42 @@ exports.getStats = async (req, res) => {
   try {
     const totalUsers = await User.countDocuments();
     const totalPosts = await Post.countDocuments();
+    const totalChallenges = await Challenge.countDocuments();
     
     const viewsData = await Post.aggregate([{ $group: { _id: null, total: { $sum: "$views" } } }]);
     const totalViews = viewsData[0]?.total || 0;
 
-    // Đếm tổng số comments (giả sử có field comments trong Post)
-    const commentsData = await Post.aggregate([
-      { $project: { commentCount: { $size: { $ifNull: ["$comments", []] } } } },
-      { $group: { _id: null, total: { $sum: "$commentCount" } } }
-    ]);
-    const totalComments = commentsData[0]?.total || 0;
+    // Đếm tổng số comments từ bảng Comment
+    const totalComments = await Comment.countDocuments();
 
-    // Dữ liệu biểu đồ: Gom nhóm theo Category
-    const chartData = await Post.aggregate([
-        { $group: { _id: "$category", count: { $sum: 1 } } }
+    // Thống kê bài viết theo topic (cho forum posts)
+    const topicStats = await Post.aggregate([
+      { $match: { type: 'forum', forumTopic: { $exists: true, $ne: null } } },
+      { $group: { _id: "$forumTopic", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 10 }
     ]);
 
-    // Thống kê theo loại bài viết
+    // Thống kê bài viết theo category (cho news/articles)
+    const categoryStats = await Post.aggregate([
+      { $match: { newsCategory: { $exists: true, $ne: null } } },
+      { $lookup: { from: 'categories', localField: 'newsCategory', foreignField: '_id', as: 'category' } },
+      { $unwind: '$category' },
+      { $group: { _id: "$category.name", count: { $sum: 1 } } },
+      { $sort: { count: -1 } }
+    ]);
+
+    // Thống kê theo loại bài viết (sửa lại để chính xác)
     const postTypeStats = await Post.aggregate([
         { $group: { _id: "$type", count: { $sum: 1 } } }
     ]);
+
+    // Bài viết được xem nhiều nhất
+    const mostViewedPosts = await Post.find()
+      .populate('author', 'username fullName')
+      .sort({ views: -1 })
+      .limit(10)
+      .select('title views author type createdAt');
 
     // Thống kê người dùng mới trong 7 ngày qua
     const sevenDaysAgo = new Date();
@@ -41,17 +59,68 @@ exports.getStats = async (req, res) => {
       createdAt: { $gte: sevenDaysAgo } 
     });
 
+    // Thống kê comments mới trong 7 ngày qua
+    const newCommentsThisWeek = await Comment.countDocuments({ 
+      createdAt: { $gte: sevenDaysAgo } 
+    });
+
+    // Thống kê challenges mới trong 7 ngày qua
+    const newChallengesThisWeek = await Challenge.countDocuments({ 
+      createdAt: { $gte: sevenDaysAgo } 
+    });
+
+    // Thống kê challenges theo trạng thái
+    const challengeStatusStats = await Challenge.aggregate([
+        { $group: { _id: "$status", count: { $sum: 1 } } }
+    ]);
+
+    // Thống kê hoạt động theo ngày (7 ngày qua)
+    const dailyStats = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const startOfDay = new Date(date.setHours(0, 0, 0, 0));
+      const endOfDay = new Date(date.setHours(23, 59, 59, 999));
+      
+      const dayPosts = await Post.countDocuments({ 
+        createdAt: { $gte: startOfDay, $lte: endOfDay } 
+      });
+      const dayComments = await Comment.countDocuments({ 
+        createdAt: { $gte: startOfDay, $lte: endOfDay } 
+      });
+      const dayUsers = await User.countDocuments({ 
+        createdAt: { $gte: startOfDay, $lte: endOfDay } 
+      });
+
+      dailyStats.push({
+        date: startOfDay.toLocaleDateString('vi-VN'),
+        posts: dayPosts,
+        comments: dayComments,
+        users: dayUsers
+      });
+    }
+
     res.json({ 
       totalUsers, 
       totalPosts, 
       totalViews, 
       totalComments,
-      chartData,
+      totalChallenges,
+      topicStats,
+      categoryStats,
       postTypeStats,
+      mostViewedPosts,
+      challengeStatusStats,
       newUsersThisWeek,
-      newPostsThisWeek
+      newPostsThisWeek,
+      newCommentsThisWeek,
+      newChallengesThisWeek,
+      dailyStats
     });
-  } catch (e) { res.status(500).json({ message: e.message }); }
+  } catch (e) { 
+    console.error('Error in getStats:', e);
+    res.status(500).json({ message: e.message }); 
+  }
 };
 
 // 2. Lấy bài viết bị báo cáo (FIX LỖI KHÔNG HIỆN)

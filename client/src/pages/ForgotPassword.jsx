@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
+import { API_URL } from '../apiConfig';
 
 const ForgotPassword = () => {
   const [step, setStep] = useState(1); // 1: Nhập email, 2: Đặt mật khẩu mới
@@ -10,8 +11,6 @@ const ForgotPassword = () => {
   const [message, setMessage] = useState({ type: '', content: '' });
   const [loading, setLoading] = useState(false);
 
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
   // Bước 1: Xác thực email
   const handleVerifyEmail = async (e) => {
     e.preventDefault();
@@ -19,7 +18,7 @@ const ForgotPassword = () => {
     setLoading(true);
 
     try {
-      const res = await axios.post(`${API_URL}/api/auth/verify-email`, { email });
+      const res = await axios.post(`${API_URL}/auth/verify-email`, { email });
       setMessage({ type: 'success', content: res.data.message });
       setStep(2);
     } catch (err) {
@@ -50,7 +49,7 @@ const ForgotPassword = () => {
     setLoading(true);
 
     try {
-      const res = await axios.post(`${API_URL}/api/auth/reset-password-simple`, { 
+      const res = await axios.post(`${API_URL}/auth/reset-password-simple`, { 
         email, 
         newPassword 
       });

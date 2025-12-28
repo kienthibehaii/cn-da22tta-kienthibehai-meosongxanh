@@ -58,7 +58,13 @@ exports.login = async (req, res) => {
     }
 
     const token = jwt.sign({ id: user._id, role: user.role }, SECRET_KEY);
-    res.json({ token, username: user.username, role: user.role, fullName: user.fullName });
+    res.json({ 
+      token, 
+      _id: user._id,
+      username: user.username, 
+      role: user.role, 
+      fullName: user.fullName 
+    });
   } catch (e) {
     res.status(500).json({ message: 'Lỗi server' });
   }
@@ -115,6 +121,21 @@ exports.resetPasswordSimple = async (req, res) => {
     res.status(500).json({ message: 'Có lỗi xảy ra, vui lòng thử lại sau.' });
   }
 };
+
+// Lấy thông tin user hiện tại
+exports.getMe = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'Không tìm thấy user' });
+    }
+    res.json(user);
+  } catch (error) {
+    console.error('Error getting user info:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+};
+
 // --- HÀM TẠO ADMIN MẶC ĐỊNH (ĐÃ FIX LỖI E11000) ---
 exports.createDefaultAdmin = async () => {
   try {

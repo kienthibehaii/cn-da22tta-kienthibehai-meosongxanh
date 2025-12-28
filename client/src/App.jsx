@@ -10,6 +10,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import News from './pages/News';
 import Articles from './pages/Articles';
 import Forum from './pages/Forum';
+import ChallengesKanban from './pages/ChallengesKanban';
 import Admin from './pages/Admin';
 import CreatePost from './pages/CreatePost';
 import PostDetail from './pages/PostDetail';
@@ -18,6 +19,7 @@ import Profile from './pages/Profile';
 
 function App() {
   const [user, setUser] = useState(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -33,6 +35,7 @@ function App() {
   };
 
   const isActive = (path) => location.pathname === path ? "text-emerald-600 bg-emerald-50 font-bold" : "text-gray-600 hover:text-emerald-600 hover:bg-gray-50 font-medium";
+  const isMobileActive = (path) => location.pathname === path ? "text-emerald-600 bg-emerald-50 font-bold" : "text-gray-700 hover:text-emerald-600 hover:bg-gray-50";
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
 
   return (
@@ -54,13 +57,41 @@ function App() {
                 <Link to="/news" className={`px-4 py-2 rounded-full text-sm transition-all ${isActive('/news')}`}>Tin Tức</Link>
                 <Link to="/articles" className={`px-4 py-2 rounded-full text-sm transition-all ${isActive('/articles')}`}>Kiến Thức</Link>
                 <Link to="/forum" className={`px-4 py-2 rounded-full text-sm transition-all ${isActive('/forum')}`}>Diễn Đàn</Link>
+                <Link to="/challenges" className={`px-4 py-2 rounded-full text-sm transition-all ${isActive('/challenges')}`}>🎯 Thử Thách</Link>
                 {isAdmin && (
                     <Link to="/admin" className={`px-4 py-2 rounded-full text-sm transition-all ${isActive('/admin')} text-red-600 hover:bg-red-50 hover:text-red-700`}>🛡️ Quản Trị</Link>
                 )}
             </nav>
 
-            {/* User Action */}
-            <div className="flex items-center gap-4">
+            {/* Mobile menu button */}
+            <div className="md:hidden flex items-center gap-2">
+              {user && (
+                <Link to="/profile" className="flex items-center">
+                  {user.avatar ? (
+                    <img src={user.avatar} className="w-8 h-8 rounded-full object-cover border border-emerald-200" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-sm">
+                      {user.fullName.charAt(0)}
+                    </div>
+                  )}
+                </Link>
+              )}
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="p-2 rounded-md text-gray-600 hover:text-emerald-600 hover:bg-gray-100 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {mobileMenuOpen ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  )}
+                </svg>
+              </button>
+            </div>
+
+            {/* User Action - Desktop Only */}
+            <div className="hidden md:flex items-center gap-4">
               {user ? (
                 <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
                   <Link to="/profile" className="flex items-center gap-2 hover:bg-gray-100 px-3 py-1.5 rounded-full transition group">
@@ -89,6 +120,97 @@ function App() {
               )}
             </div>
           </div>
+
+          {/* Mobile Navigation Menu */}
+          {mobileMenuOpen && (
+            <div className="md:hidden border-t border-gray-200 bg-white">
+              <div className="px-2 pt-2 pb-3 space-y-1">
+                <Link 
+                  to="/" 
+                  className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${isMobileActive('/')}`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  🏠 Trang Chủ
+                </Link>
+                <Link 
+                  to="/news" 
+                  className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${isMobileActive('/news')}`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  📰 Tin Tức
+                </Link>
+                <Link 
+                  to="/articles" 
+                  className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${isMobileActive('/articles')}`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  📚 Kiến Thức
+                </Link>
+                <Link 
+                  to="/forum" 
+                  className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${isMobileActive('/forum')}`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  💬 Diễn Đàn
+                </Link>
+                <Link 
+                  to="/challenges" 
+                  className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${isMobileActive('/challenges')}`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  🎯 Thử Thách
+                </Link>
+                
+                {/* User actions for mobile */}
+                {user ? (
+                  <div className="border-t border-gray-200 pt-3 mt-3">
+                    <Link 
+                      to="/profile" 
+                      className="flex items-center px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-emerald-600 hover:bg-gray-50 transition-colors"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      👤 Hồ Sơ ({user.fullName})
+                    </Link>
+                    {isAdmin && (
+                      <Link 
+                        to="/admin" 
+                        className="flex items-center px-3 py-2 rounded-md text-base font-medium text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        🛡️ Quản Trị
+                      </Link>
+                    )}
+                    <button 
+                      onClick={() => {
+                        handleLogout();
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-md text-base font-medium text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors"
+                    >
+                      🚪 Đăng Xuất
+                    </button>
+                  </div>
+                ) : (
+                  <div className="border-t border-gray-200 pt-3 mt-3 space-y-1">
+                    <Link 
+                      to="/login" 
+                      className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-emerald-600 hover:bg-gray-50 transition-colors"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      🔑 Đăng Nhập
+                    </Link>
+                    <Link 
+                      to="/register" 
+                      className="block px-3 py-2 rounded-md text-base font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      ✨ Đăng Ký
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </header>
 
@@ -103,6 +225,7 @@ function App() {
             <Route path="/news" element={<News />} />
             <Route path="/articles" element={<Articles />} />
             <Route path="/forum" element={<Forum />} />
+            <Route path="/challenges" element={<ChallengesKanban />} />
             
             <Route path="/post/:id" element={<PostDetail />} />
             <Route path="/create-post" element={<CreatePost />} />

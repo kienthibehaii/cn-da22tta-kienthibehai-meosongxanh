@@ -72,16 +72,17 @@ const Profile = () => {
       </div>
 
       {/* THỐNG KÊ */}
-      <div style={{display: 'flex', gap: '15px', margin: '20px 0'}}>
-            <div style={{flex:1, background:'white', padding:'20px', borderRadius:'10px', textAlign:'center', boxShadow:'0 2px 4px rgba(0,0,0,0.05)'}}>
+      <div style={{display: 'flex', gap: '15px', margin: '20px 0', flexWrap: 'wrap'}}>
+            <div style={{flex:1, minWidth:'150px', background:'white', padding:'20px', borderRadius:'10px', textAlign:'center', boxShadow:'0 2px 4px rgba(0,0,0,0.05)'}}>
                 <b style={{fontSize:'1.5rem', color:'#3b82f6'}}>{data.stats.postCount}</b><br/><span style={{color:'#666'}}>Bài viết</span>
             </div>
-            <div style={{flex:1, background:'white', padding:'20px', borderRadius:'10px', textAlign:'center', boxShadow:'0 2px 4px rgba(0,0,0,0.05)'}}>
+            <div style={{flex:1, minWidth:'150px', background:'white', padding:'20px', borderRadius:'10px', textAlign:'center', boxShadow:'0 2px 4px rgba(0,0,0,0.05)'}}>
                 <b style={{fontSize:'1.5rem', color:'#10b981'}}>{data.stats.views}</b><br/><span style={{color:'#666'}}>Lượt xem</span>
             </div>
-            <div style={{flex:1, background:'white', padding:'20px', borderRadius:'10px', textAlign:'center', boxShadow:'0 2px 4px rgba(0,0,0,0.05)'}}>
+            <div style={{flex:1, minWidth:'150px', background:'white', padding:'20px', borderRadius:'10px', textAlign:'center', boxShadow:'0 2px 4px rgba(0,0,0,0.05)'}}>
                 <b style={{fontSize:'1.5rem', color:'#ef4444'}}>{data.stats.likesReceived}</b><br/><span style={{color:'#666'}}>Yêu thích</span>
             </div>
+
       </div>
 
       {/* TABS */}

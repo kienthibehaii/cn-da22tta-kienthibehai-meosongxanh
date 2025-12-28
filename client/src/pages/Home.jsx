@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
-import { API_URL, WEATHER_KEY, AQI_KEY } from '../apiConfig'; // Import từ file cấu hình
+import { WEATHER_KEY, IQAIR_KEY, API_URL } from '../apiConfig';// Import từ file cấu hình
 
 const Home = () => {
   const [weather, setWeather] = useState(null);
@@ -9,10 +9,11 @@ const Home = () => {
   const [news, setNews] = useState([]);
   const [topPosts, setTopPosts] = useState([]);
   const [pinnedArticles, setPinnedArticles] = useState([]);
+  const [challenges, setChallenges] = useState([]);
   const [locationError, setLocationError] = useState('');
   const [loadingWeather, setLoadingWeather] = useState(true);
 
-  useEffect(() => {
+useEffect(() => {
     // 1. Fetch dữ liệu từ Server Backend
     const fetchData = async () => {
         try {
@@ -34,47 +35,10 @@ const Home = () => {
                 })
                 .catch(err => console.error("Lỗi tải bài ghim:", err));
 
-            console.log('API_URL:', API_URL); // Debug log
-            
-            // Test API connection
-            try {
-                const testRes = await axios.get(`${API_URL}/posts/test`);
-                console.log('API Test:', testRes.data);
-            } catch (testErr) {
-                console.error('API Test failed:', testErr);
-            }
-            
-            // Lấy 3 Tin tức mới nhất
-            try {
-                const newsRes = await axios.get(`${API_URL}/posts?type=news&status=approved&limit=3&sort=createdAt`);
-                console.log('News data:', newsRes.data);
-                setNews(newsRes.data || []);
-            } catch (err) {
-                console.error("Lỗi tải tin tức:", err);
-                setNews([]);
-            }
-
-            // Lấy 3 bài viết Forum có nhiều lượt xem nhất
-            try {
-                const forumRes = await axios.get(`${API_URL}/posts?type=forum&status=approved&limit=3&sort=views`);
-                console.log('Forum data:', forumRes.data);
-                setTopPosts(forumRes.data || []);
-            } catch (err) {
-                console.error("Lỗi tải top bài:", err);
-                setTopPosts([]);
-            }
-
-            // Lấy Bài viết Kiến thức để lọc bài GHIM
-            try {
-                const articlesRes = await axios.get(`${API_URL}/posts?type=article&status=approved`);
-                console.log('Articles data:', articlesRes.data);
-                const pinned = (articlesRes.data || []).filter(p => p.isPinned);
-                setPinnedArticles(pinned);
-            } catch (err) {
-                console.error("Lỗi tải bài ghim:", err);
-                setPinnedArticles([]);
-            }
-
+            // Lấy Challenges nổi bật
+            axios.get(`${API_URL}/challenges?limit=3`)
+                .then(res => setChallenges(res.data.slice(0, 3)))
+                .catch(err => console.error("Lỗi tải challenges:", err));
         } catch (e) {
             console.error("Lỗi kết nối Server:", e);
         }
@@ -93,54 +57,159 @@ const Home = () => {
     }
 
     navigator.geolocation.getCurrentPosition(
-        async (position) => {
-            const { latitude, longitude } = position.coords;
-            try {
-                // --- A. Weather API (OpenWeatherMap) ---
-                const weatherRes = await axios.get(`https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=metric&appid=${WEATHER_KEY}&lang=vi`);
-                
-                // --- B. Reverse Geocoding (Lấy tên địa phương chính xác) ---
-                const geoRes = await axios.get(`https://api.openweathermap.org/geo/1.0/reverse?lat=${latitude}&lon=${longitude}&limit=1&appid=${WEATHER_KEY}`);
-                const localName = geoRes.data[0]?.local_names?.vi || geoRes.data[0]?.name || weatherRes.data.name;
+    async (position) => {
+        const { latitude, longitude } = position.coords;
+        console.log('Vị trí người dùng:', { latitude, longitude });
 
-                setWeather({
-                    temp: Math.round(weatherRes.data.main.temp),
-                    city: localName,
-                    desc: weatherRes.data.weather[0].description,
-                    icon: weatherRes.data.weather[0].icon
-                });
+        try {
+        // --- A. Weather API (OpenWeatherMap) ---
+        const weatherRes = await axios.get(
+            `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=metric&appid=${WEATHER_KEY}&lang=vi`
+        );
 
-                // --- C. AQI API (AQICN/WAQI) ---
-                const pollutionRes = await axios.get(`https://api.waqi.info/feed/geo:${latitude};${longitude}/?token=${AQI_KEY}`);
-                
-                if (pollutionRes.data.status === 'ok') {
-                    setAqiData(getAqiInfo(pollutionRes.data.data.aqi));
-                } else {
-                    console.warn("AQI API Error:", pollutionRes.data.data);
+        // --- B. Reverse Geocoding ---
+        const geoRes = await axios.get(
+            `https://api.openweathermap.org/geo/1.0/reverse?lat=${latitude}&lon=${longitude}&limit=1&appid=${WEATHER_KEY}`
+        );
+
+        const localName =
+            geoRes.data[0]?.local_names?.vi ||
+            geoRes.data[0]?.name ||
+            weatherRes.data.name;
+
+        setWeather({
+            temp: Math.round(weatherRes.data.main.temp),
+            city: localName,
+            desc: weatherRes.data.weather[0].description,
+            icon: weatherRes.data.weather[0].icon,
+        });
+
+        // --- C. AQI API (IQAir - Cải thiện) ---
+        try {
+            console.log('Đang gọi IQAir API với tọa độ:', { latitude, longitude });
+            
+            const aqiResponse = await axios.get(
+                `https://api.iqair.com/v2/nearest_city?lat=${latitude}&lon=${longitude}&key=${IQAIR_KEY}`,
+                {
+                    timeout: 10000, // Timeout 10 giây
+                    headers: {
+                        'Accept': 'application/json',
+                    }
                 }
+            );
 
-                setLoadingWeather(false);
-            } catch(e) {
-                console.error("Lỗi API Môi trường:", e);
-                setLocationError('Không thể lấy dữ liệu thời tiết.');
-                setLoadingWeather(false);
+            console.log('IQAir API Response:', aqiResponse.data);
+
+            if (aqiResponse.data.status === 'success' && aqiResponse.data.data) {
+                const pollution = aqiResponse.data.data.current.pollution;
+                const aqiUS = pollution.aqius;
+                const cityName = aqiResponse.data.data.city;
+                const country = aqiResponse.data.data.country;
+                
+                console.log('AQI Data:', { aqiUS, cityName, country });
+                
+                setAqiData({
+                    ...getAqiInfo(aqiUS),
+                    city: cityName,
+                    country: country,
+                    timestamp: pollution.ts
+                });
+            } else {
+                console.warn('IQAir API không trả về dữ liệu hợp lệ:', aqiResponse.data);
+                // Fallback: Sử dụng OpenWeatherMap Air Pollution API
+                await getAQIFallback(latitude, longitude);
             }
-        },
-        (err) => {
-            console.error("Lỗi GPS:", err);
-            setLocationError('Vui lòng cho phép truy cập vị trí.');
-            setLoadingWeather(false);
+        } catch (aqiError) {
+            console.error('Lỗi IQAir API:', aqiError);
+            // Fallback: Sử dụng OpenWeatherMap Air Pollution API
+            await getAQIFallback(latitude, longitude);
         }
+
+        setLoadingWeather(false);
+        } catch (e) {
+        console.error('Lỗi API Môi trường:', e);
+        setLocationError('Không thể lấy dữ liệu thời tiết.');
+        setLoadingWeather(false);
+        }
+    },
+    (err) => {
+        console.error('Lỗi GPS:', err);
+        let errorMessage = 'Vui lòng cho phép truy cập vị trí.';
+        
+        switch(err.code) {
+            case err.PERMISSION_DENIED:
+                errorMessage = 'Bạn đã từ chối quyền truy cập vị trí. Vui lòng bật GPS và cho phép truy cập.';
+                break;
+            case err.POSITION_UNAVAILABLE:
+                errorMessage = 'Không thể xác định vị trí của bạn.';
+                break;
+            case err.TIMEOUT:
+                errorMessage = 'Quá thời gian chờ định vị.';
+                break;
+        }
+        
+        setLocationError(errorMessage);
+        setLoadingWeather(false);
+    },
+    {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 300000 // Cache vị trí trong 5 phút
+    }
     );
   };
 
+  // Hàm fallback sử dụng OpenWeatherMap Air Pollution API
+  const getAQIFallback = async (latitude, longitude) => {
+    try {
+        console.log('Sử dụng OpenWeatherMap Air Pollution API làm fallback');
+        
+        const pollutionRes = await axios.get(
+            `https://api.openweathermap.org/data/2.5/air_pollution?lat=${latitude}&lon=${longitude}&appid=${WEATHER_KEY}`
+        );
+
+        if (pollutionRes.data && pollutionRes.data.list && pollutionRes.data.list[0]) {
+            const aqi = pollutionRes.data.list[0].main.aqi;
+            // Chuyển đổi từ scale 1-5 của OpenWeatherMap sang US AQI
+            const aqiUS = convertToUSAQI(aqi, pollutionRes.data.list[0].components);
+            
+            console.log('Fallback AQI Data:', { aqi, aqiUS });
+            
+            setAqiData({
+                ...getAqiInfo(aqiUS),
+                source: 'OpenWeatherMap',
+                timestamp: new Date().toISOString()
+            });
+        }
+    } catch (fallbackError) {
+        console.error('Lỗi Fallback AQI API:', fallbackError);
+        setAqiData({
+            value: 'N/A',
+            level: 'Không có dữ liệu',
+            color: '#6b7280',
+            desc: 'Không thể lấy dữ liệu chất lượng không khí.',
+            range: 'N/A',
+            explanation: 'Vui lòng thử lại sau.'
+        });
+    }
+  };
+
+  // Chuyển đổi từ OpenWeatherMap AQI (1-5) sang US AQI (0-500)
+  const convertToUSAQI = (owmAqi, components) => {
+    // Sử dụng PM2.5 làm chỉ số chính để chuyển đổi
+    const pm25 = components.pm2_5;
+    
+    if (pm25 <= 12) return Math.round((50 / 12) * pm25);
+    if (pm25 <= 35.4) return Math.round(((100 - 51) / (35.4 - 12.1)) * (pm25 - 12.1) + 51);
+    if (pm25 <= 55.4) return Math.round(((150 - 101) / (55.4 - 35.5)) * (pm25 - 35.5) + 101);
+    if (pm25 <= 150.4) return Math.round(((200 - 151) / (150.4 - 55.5)) * (pm25 - 55.5) + 151);
+    if (pm25 <= 250.4) return Math.round(((300 - 201) / (250.4 - 150.5)) * (pm25 - 150.5) + 201);
+    return Math.round(((500 - 301) / (500.4 - 250.5)) * (pm25 - 250.5) + 301);
+  };
+
+
   const getAqiInfo = (aqi) => {
 
-      if (aqi <= 50) return { value: aqi, level: 'Tốt', color: '#10b981', desc: 'Không khí trong lành.' };
-      if (aqi <= 100) return { value: aqi, level: 'Trung bình', color: '#eab308', desc: 'Chấp nhận được.' };
-      if (aqi <= 150) return { value: aqi, level: 'Kém', color: '#f97316', desc: 'Nhóm nhạy cảm hạn chế ra ngoài.' };
-      if (aqi <= 200) return { value: aqi, level: 'Xấu', color: '#ef4444', desc: 'Có hại sức khỏe.' };
-      return { value: aqi, level: 'Nguy hại', color: '#881337', desc: 'Cảnh báo khẩn cấp!' };
 
       if (aqi <= 50) return { 
         value: aqi, 
@@ -199,9 +268,19 @@ const Home = () => {
             <span className="inline-block py-1 px-3 rounded-full bg-emerald-500/30 border border-emerald-400/30 text-emerald-100 text-sm font-semibold mb-4">🌿 Cộng đồng Sống Xanh</span>
             <h1 className="text-4xl md:text-5xl font-extrabold mb-4 leading-tight">Hành động nhỏ <br/> <span className="text-emerald-200">Ý nghĩa lớn 🌍</span></h1>
             <p className="text-emerald-100 text-lg mb-8">Chia sẻ kiến thức, lan tỏa lối sống bền vững.</p>
-            <div className="flex gap-4 justify-center md:justify-start">
-                <Link to="/forum" className="bg-white text-emerald-700 px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-emerald-50 transition transform hover:-translate-y-1">Tham gia ngay</Link>
-                <Link to="/articles" className="bg-emerald-700/50 border border-emerald-500/50 text-white px-6 py-3 rounded-xl font-bold hover:bg-emerald-700/70 transition">Khám phá</Link>
+            <div className="flex flex-col sm:flex-row gap-5 justify-center md:justify-start">
+                <Link
+                to="/forum"
+                className="bg-emerald-500 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-xl hover:bg-emerald-400 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 hover:scale-105"
+                >
+                Tham gia ngay
+                </Link>
+                <Link
+                to="/challenges"
+                className="bg-transparent border-2 border-emerald-400 text-emerald-200 px-8 py-4 rounded-2xl font-bold text-lg backdrop-blur-sm hover:bg-emerald-500/20 transition-all duration-300 transform hover:-translate-y-1"
+                >
+                🎯 Thử thách xanh
+                </Link>
             </div>
          </div>
 
@@ -226,6 +305,14 @@ const Home = () => {
              {aqiData && (
                  <div className="bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-2xl w-64 text-center shadow-lg transform hover:scale-105 transition duration-300">
                     <h3 className="text-lg font-medium text-emerald-100 mb-3">💨 Chất lượng không khí</h3>
+                    
+                    {/* Hiển thị thành phố từ IQAir nếu có */}
+                    {aqiData.city && (
+                        <div className="text-xs text-emerald-200 mb-2 opacity-80">
+                            📍 {aqiData.city}{aqiData.country && `, ${aqiData.country}`}
+                        </div>
+                    )}
+                    
                     <div className="inline-block px-4 py-1 rounded-xl bg-white text-gray-800 font-bold text-4xl mb-2 shadow-inner" style={{color: aqiData.color}}>
                         {aqiData.value}
                     </div>
@@ -236,12 +323,25 @@ const Home = () => {
                     <div className="text-xs text-emerald-100 opacity-80 mb-2">Chỉ số: {aqiData.range}</div>
                     <p className="text-xs text-emerald-100 opacity-80 line-clamp-3 leading-relaxed">{aqiData.explanation}</p>
 
+                    {/* Hiển thị nguồn dữ liệu */}
+                    {aqiData.source && (
+                        <div className="text-xs text-emerald-200 mt-2 opacity-60">
+                            Nguồn: {aqiData.source}
+                        </div>
+                    )}
+                    
+                    {/* Hiển thị thời gian cập nhật */}
+                    {aqiData.timestamp && (
+                        <div className="text-xs text-emerald-200 mt-1 opacity-60">
+                            Cập nhật: {new Date(aqiData.timestamp).toLocaleTimeString('vi-VN')}
+                        </div>
+                    )}
                  </div>
              )}
          </div>
       </div>
 
-      {/* 2. PINNED ARTICLES (Kiến Thức Nổi Bật) */}
+{/* 2. PINNED ARTICLES (Kiến Thức Nổi Bật) */}
       {pinnedArticles.length > 0 && (
           <div className="mb-16 bg-blue-50 rounded-3xl p-8 border border-blue-100 shadow-sm">
             <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2 justify-center"><span className="text-blue-500">⭐</span> Kiến Thức Nổi Bật</h2>
@@ -264,10 +364,87 @@ const Home = () => {
           </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 mb-12">
-          {/* 3. TIN TỨC MỚI */}
+      {/* 2.5. CHALLENGES SECTION */}
+      {challenges.length > 0 && (
+          <div className="mb-16 bg-gradient-to-br from-purple-50 to-pink-50 rounded-3xl p-8 border border-purple-100 shadow-sm">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                <span className="text-purple-500">🎯</span> Thử Thách Xanh
+              </h2>
+              <Link to="/challenges" className="text-purple-600 text-sm font-bold hover:underline">
+                Xem tất cả &rarr;
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {challenges.map(challenge => (
+                    <div key={challenge._id} className="group h-full">
+                        <div className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 h-full border border-gray-100 overflow-hidden flex flex-col">
+                            <div className="p-6 flex-grow">
+                                <div className="flex justify-between items-start mb-3">
+                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                        challenge.category === 'daily' ? 'bg-blue-100 text-blue-800' :
+                                        challenge.category === 'weekly' ? 'bg-green-100 text-green-800' :
+                                        challenge.category === 'monthly' ? 'bg-purple-100 text-purple-800' :
+                                        challenge.category === 'special' ? 'bg-red-100 text-red-800' :
+                                        'bg-yellow-100 text-yellow-800'
+                                    }`}>
+                                        {challenge.category === 'daily' ? 'Hàng ngày' :
+                                         challenge.category === 'weekly' ? 'Hàng tuần' :
+                                         challenge.category === 'monthly' ? 'Hàng tháng' :
+                                         challenge.category === 'special' ? 'Đặc biệt' : 'Cộng đồng'}
+                                    </span>
+                                    <span className="text-emerald-600 font-bold text-sm">
+                                        🏆 {challenge.pointsReward} điểm
+                                    </span>
+                                </div>
+                                
+                                <h3 className="text-lg font-bold text-gray-800 group-hover:text-purple-600 mb-2 line-clamp-2 transition-colors">
+                                    {challenge.title}
+                                </h3>
+                                
+                                <p className="text-gray-500 text-sm line-clamp-3 leading-relaxed mb-4">
+                                    {challenge.description}
+                                </p>
+                                
+                                <div className="flex justify-between items-center text-xs text-gray-400 mb-4">
+                                    <span className="flex items-center gap-1">
+                                        👥 {challenge.stats?.totalParticipants || 0} người tham gia
+                                    </span>
+                                    <span>
+                                        📅 {new Date(challenge.endDate).toLocaleDateString('vi-VN')}
+                                    </span>
+                                </div>
+                                
+                                <Link 
+                                    to="/challenges"
+                                    className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-2 px-4 rounded-lg text-sm font-medium hover:from-purple-600 hover:to-pink-600 transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg text-center block"
+                                >
+                                    Tham gia ngay
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+            
+            <div className="text-center mt-8">
+                <Link 
+                    to="/challenges" 
+                    className="inline-flex items-center gap-2 bg-white text-purple-600 px-6 py-3 rounded-full font-bold hover:bg-purple-50 transition-all duration-300 transform hover:-translate-y-1 shadow-md hover:shadow-lg border border-purple-200"
+                >
+                    <span>🎯</span>
+                    Khám phá thêm thử thách
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                </Link>
+            </div>
+          </div>
+      )}
 
-          {/* 3. TIN TỨC MỚI NHẤT (3 bài mới nhất) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 mb-12">
+          
+          {/* 3. TIN TỨC MỚI */}
           <div className="lg:col-span-2">
             <div className="flex justify-between items-center mb-6 border-b-2 border-emerald-100 pb-2">
                 <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><span className="text-emerald-500">📰</span> Tin Tức Mới Nhất</h2>
@@ -275,8 +452,6 @@ const Home = () => {
             </div>
             <div className="space-y-5">
                 {news.length === 0 ? <p className="text-gray-500 italic py-10 text-center bg-gray-50 rounded-xl border border-gray-100">Chưa có tin tức nào.</p> : news.map(item => (
-                
-
                     <Link to={`/post/${item._id}`} key={item._id} className="block group">
                         <div className="bg-white p-4 rounded-2xl shadow-sm hover:shadow-md border border-gray-100 transition flex gap-5 items-start">
                             <div className="w-32 h-24 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100">
@@ -296,16 +471,12 @@ const Home = () => {
             </div>
           </div>
 
-
           {/* 4. TOP DIỄN ĐÀN (SIDEBAR) */}
-
-          {/* 4. SÔI ĐỘNG NHẤT (3 bài có nhiều lượt xem nhất từ diễn đàn) */}
-
           <div>
             <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b-2 border-orange-100 pb-2 flex items-center gap-2"><span className="text-orange-500">🔥</span> Sôi Động Nhất</h2>
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
                 <div className="space-y-6">
-                    {topPosts.length === 0 ? <p className="text-gray-500 italic text-center py-5">Chưa có bài viết nổi bật.</p> : topPosts.slice(0, 3).map((post, index) => (
+                    {topPosts.length === 0 ? <p className="text-gray-500 italic text-center py-5">Chưa có bài viết nổi bật.</p> : topPosts.map((post, index) => (
                         <Link to={`/post/${post._id}`} key={post._id} className="flex gap-4 items-start group">
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-sm ${index === 0 ? 'bg-gradient-to-br from-yellow-400 to-orange-500 text-white' : index === 1 ? 'bg-gray-200 text-gray-600' : index === 2 ? 'bg-orange-100 text-orange-600' : 'bg-gray-50 text-gray-400'}`}>
                                 {index + 1}
@@ -313,7 +484,7 @@ const Home = () => {
                             <div>
                                 <h4 className="text-sm font-bold text-gray-800 group-hover:text-emerald-600 transition line-clamp-2 leading-snug mb-1">{post.title}</h4>
                                 <div className="text-xs text-gray-400 flex items-center gap-2 font-medium">
-                                    <span className="flex items-center gap-1 text-orange-500 font-bold">👁️ {post.views}</span>
+                                    <span className="flex items-center gap-1 text-gray-500">👁️ {post.views}</span>
                                     <span>•</span>
                                     <span>{post.author?.fullName}</span>
                                 </div>

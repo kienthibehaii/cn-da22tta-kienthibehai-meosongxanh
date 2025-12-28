@@ -54,38 +54,54 @@ const CreatePost = () => {
       fetchData();
   }, [queryType, token]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    // --- DEBUG: In ra dữ liệu chuẩn bị gửi ---
-    console.log("Đang gửi bài:", { title, type: queryType, selectedId });
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    const formData = new FormData();
-    formData.append('title', title);
-    formData.append('content', content);
-    formData.append('type', queryType);
-    formData.append('selectedId', selectedId);
-    
-    // Gửi thêm category dạng text để hiển thị
-    formData.append('category', selectedName || 'Chung');
+  // --- DEBUG: In ra dữ liệu chuẩn bị gửi ---
+  console.log("Đang gửi bài:", { title, type: queryType, selectedId });
 
-    if (imageFile) formData.append('image', imageFile);
+  const formData = new FormData();
+  formData.append('title', title);
+  formData.append('content', content);
+  formData.append('type', queryType);
+  formData.append('selectedId', selectedId);
 
-    try {
-       await axios.post('http://localhost:5000/api/posts', formData, { 
-           headers: { Authorization: token, 'Content-Type': 'multipart/form-data' } 
-       });
-       
-       alert("Bài đã được chuyển đến quản trị viên để xem xét");
-       if(queryType === 'news') navigate('/news');
-       else if(queryType === 'article') navigate('/articles');
-       else navigate('/forum');
-       
-    } catch (err) { 
-        console.error(err);
-        alert('Lỗi đăng bài: ' + (err.response?.data?.message || err.message)); 
+  // Gửi thêm category dạng text để hiển thị
+  formData.append('category', selectedName || 'Chung');
+
+  if (imageFile) formData.append('image', imageFile);
+
+  try {
+    await axios.post('http://localhost:5000/api/posts', formData, {
+      headers: { 
+        Authorization: token, 
+        'Content-Type': 'multipart/form-data' 
+      }
+    });
+
+    // Xử lý thông báo thành công tùy theo loại bài viết
+    let message;
+    if (queryType === 'forum') {
+      message = "Bài đã được đăng thành công!";
+    } else {
+      message = "Bài viết đã được gửi đến quản trị viên để duyệt.";
     }
-  };
+    alert(message);
+
+    // Điều hướng về trang tương ứng
+    if (queryType === 'news') {
+      navigate('/news');
+    } else if (queryType === 'article') {
+      navigate('/articles');
+    } else {
+      navigate('/forum');
+    }
+
+  } catch (err) {
+    console.error(err);
+    alert('Lỗi đăng bài: ' + (err.response?.data?.message || err.message));
+  }
+};
 
   const handleSelectChange = (e) => {
       setSelectedId(e.target.value);

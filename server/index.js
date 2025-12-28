@@ -11,6 +11,7 @@ const postRoutes = require('./routes/postRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const userRoutes = require('./routes/userRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
+const challengeRoutes = require('./routes/challengeRoutes');
 
 require('dotenv').config(); // Load biến môi trường
 
@@ -34,6 +35,7 @@ app.use('/api/posts', postRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/challenges', challengeRoutes);
 
 // --- DEPLOYMENT CONFIG (QUAN TRỌNG) ---
 // Kiểm tra nếu đang ở môi trường production (trên Render)

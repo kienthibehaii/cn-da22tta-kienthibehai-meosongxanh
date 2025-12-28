@@ -16,6 +16,20 @@ const UserSchema = new mongoose.Schema({
     default: 'user' 
   },
   
+  // Thêm trường points cho hệ thống challenge
+  points: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  
+  // Thống kê challenge
+  challengeStats: {
+    totalJoined: { type: Number, default: 0 },
+    totalCompleted: { type: Number, default: 0 },
+    successRate: { type: Number, default: 0 }
+  },
+  
   isBanned: { type: Boolean, default: false },
   savedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }],
   
